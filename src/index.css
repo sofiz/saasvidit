@@ -1,0 +1,97 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Tajawal:wght@300;400;500;700;800;900&display=swap');
+
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background-color: #020617; /* bg-slate-950 */
+  color: white;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+
+  .phone-mockup-3d {
+    transition: transform 0.1s ease-out;
+  }
+
+  .screen-glare {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.15) 0%,
+      rgba(255, 255, 255, 0) 50%,
+      rgba(255, 255, 255, 0.05) 100%
+    );
+  }
+}
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes float {
+  0% { 
+    transform: translateY(0); 
+  }
+  25% {
+    transform: translateY(-15px);
+  }
+  50% { 
+    transform: translateY(-30px); 
+  }
+  75% {
+    transform: translateY(-15px);
+  }
+  100% { 
+    transform: translateY(0); 
+  }
+}
+
+.animate-in {
+  animation: fade-in 0.2s ease-out forwards;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+.phone-shadow {
+  position: absolute;
+  bottom: -80px;
+  left: 50%;
+  width: 180px;
+  height: 30px;
+  background: rgba(0, 0, 0, 0.5);
+  filter: blur(25px);
+  border-radius: 50%;
+  transform: translateX(-50%) rotateX(85deg);
+  animation: shadow-float 6s ease-in-out infinite;
+  z-index: -1;
+  pointer-events: none;
+}
+
+@keyframes shadow-float {
+  0%, 100% { transform: translateX(-50%) rotateX(85deg) scale(1); opacity: 0.5; }
+  50% { transform: translateX(-50%) rotateX(85deg) scale(0.7); opacity: 0.2; }
+}
