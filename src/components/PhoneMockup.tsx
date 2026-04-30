@@ -21,7 +21,6 @@ interface PhoneMockupProps {
   sceneTimings: SceneTiming[];
   currentPhoneX: number;
   phoneRotationY: number;
-  isFullscreen: boolean;
   enableSpecialAnimation: boolean;
   interpolate: (frame: number, input: number[], output: number[], easing?: (t: number) => number) => number;
 }
@@ -32,7 +31,6 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
   sceneTimings,
   currentPhoneX,
   phoneRotationY,
-  isFullscreen,
   enableSpecialAnimation,
   interpolate
 }) => {

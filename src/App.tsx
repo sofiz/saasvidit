@@ -403,7 +403,6 @@ export default function ProgrammaticVideoGuide() {
                 sceneTimings={sceneTimings}
                 currentPhoneX={currentPhoneX}
                 phoneRotationY={phoneRotationY}
-                isFullscreen={isFullscreen}
                 enableSpecialAnimation={enableSpecialAnimation}
                 interpolate={interpolate}
               />
