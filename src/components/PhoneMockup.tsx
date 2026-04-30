@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image as ImageIcon, MousePointerClick } from 'lucide-react';
+import { Image as ImageIcon } from 'lucide-react';
 
 interface Scene {
   id: string;
@@ -22,6 +22,7 @@ interface PhoneMockupProps {
   currentPhoneX: number;
   phoneRotationY: number;
   isFullscreen: boolean;
+  enableSpecialAnimation: boolean;
   interpolate: (frame: number, input: number[], output: number[], easing?: (t: number) => number) => number;
 }
 
@@ -32,14 +33,15 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
   currentPhoneX,
   phoneRotationY,
   isFullscreen,
+  enableSpecialAnimation,
   interpolate
 }) => {
   return (
     <div
-      className={`absolute top-1/2 z-10 phone-wrapper ${isFullscreen ? 'right-12 md:right-24 lg:right-32' : 'right-4 md:right-12 lg:right-24'}`}
+      className="absolute top-1/2 left-1/2 z-10 phone-wrapper"
       style={{
         perspective: '1200px',
-        transform: `translate(${currentPhoneX}vw, -50%)`
+        transform: `translate(calc(-50% + ${currentPhoneX}vw), -50%)`
       }}
     >
       {/* Floating & 360 Spin Wrapper */}
@@ -92,7 +94,7 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
                 ))}
 
                 {/* Main Bump Surface */}
-                <div 
+                <div
                   className="absolute inset-0 bg-gradient-to-br from-[#2a2a2a] to-[#111111] rounded-[36px] shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)] border border-[#333333]/40"
                   style={{ transform: 'translateZ(6px)', transformStyle: 'preserve-3d' }}
                 >
@@ -105,7 +107,7 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
                         style={{ transform: `translateZ(${i * 1}px)` }}
                       />
                     ))}
-                    <div 
+                    <div
                       className="absolute inset-0 rounded-full bg-black border-[3.5px] border-[#333] shadow-[0_4px_12px_rgba(0,0,0,0.6)] flex items-center justify-center"
                       style={{ transform: 'translateZ(4px)', transformStyle: 'preserve-3d' }}
                     >
@@ -127,7 +129,7 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
                         style={{ transform: `translateZ(${i * 1}px)` }}
                       />
                     ))}
-                    <div 
+                    <div
                       className="absolute inset-0 rounded-full bg-black border-[3.5px] border-[#333] shadow-[0_4px_12px_rgba(0,0,0,0.6)] flex items-center justify-center"
                       style={{ transform: 'translateZ(4px)', transformStyle: 'preserve-3d' }}
                     >
@@ -149,7 +151,7 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
                         style={{ transform: `translateZ(${i * 1}px)` }}
                       />
                     ))}
-                    <div 
+                    <div
                       className="absolute inset-0 rounded-full bg-black border-[3.5px] border-[#333] shadow-[0_4px_12px_rgba(0,0,0,0.6)] flex items-center justify-center"
                       style={{ transform: 'translateZ(4px)', transformStyle: 'preserve-3d' }}
                     >
@@ -171,7 +173,7 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
                         style={{ transform: `translateZ(${i * 1}px)` }}
                       />
                     ))}
-                    <div 
+                    <div
                       className="absolute inset-0 rounded-full bg-[#fff5eb] border border-[#1a1a1a] shadow-[0_2px_4px_rgba(0,0,0,0.4),_inset_0_0_6px_rgba(255,255,255,0.8)] flex items-center justify-center"
                       style={{ transform: 'translateZ(3px)' }}
                     >
@@ -188,7 +190,7 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
                         style={{ transform: `translateZ(${i * 1}px)` }}
                       />
                     ))}
-                    <div 
+                    <div
                       className="absolute inset-0 rounded-full bg-[#111] border border-[#333] shadow-[inset_0_0_4px_#000] flex items-center justify-center"
                       style={{ transform: 'translateZ(2px)' }}
                     >
@@ -197,7 +199,7 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
                   </div>
 
                   {/* Mic hole */}
-                  <div 
+                  <div
                     className="absolute bottom-9 translate-y-1/2 right-5 w-2 h-2 rounded-full bg-[#111] shadow-[inset_0_0_2px_#000]"
                     style={{ transform: 'translateZ(1px)' }}
                   ></div>
@@ -223,7 +225,9 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
                 {scenes.map((scene, idx) => {
                   const timing = sceneTimings[idx] || { S: 0, E: 120 };
                   const { S, E } = timing;
-                  const isVisible = frame >= S && frame < E;
+                  const switchOffset = enableSpecialAnimation ? 15 : 0;
+                  const isVisible = frame >= (idx === 0 ? 0 : S + switchOffset) && 
+                                    frame < (idx === scenes.length - 1 ? 999999 : E + switchOffset);
 
                   return (
                     <div
@@ -242,7 +246,7 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
                     </div>
                   );
                 })}
-              
+
                 {/* Touch Animation Overlay */}
                 <div className="absolute inset-0 z-50 pointer-events-none">
                   {scenes.map((scene, idx) => {

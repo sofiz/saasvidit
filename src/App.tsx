@@ -172,8 +172,8 @@ export default function ProgrammaticVideoGuide() {
 
   // --- SPECIAL ANIMATION MATH PIPELINE ---
   const swapInputs = [0];
-  const swapPhoneX = [0];
-  const swapTextX = [0];
+  const swapPhoneX = [25];
+  const swapTextX = [-25];
   const swapPhoneRotY = [-25]; // Start with the first scene's tilt
 
   for (let i = 0; i < scenes.length; i++) {
@@ -181,8 +181,8 @@ export default function ProgrammaticVideoGuide() {
     const { S, E } = timing;
 
     const isEven = i % 2 === 0;
-    const targetPhoneX = isEven ? 0 : -45; // Move phone 45vw left
-    const targetTextX = isEven ? 0 : 45;   // Move text 45vw right
+    const targetPhoneX = isEven ? 25 : -25; // Symmetric move 25vw right or left
+    const targetTextX = isEven ? -25 : 25;   // Symmetric move 25vw left or right
 
     // Each scene swap adds a spin, but lands on a specific side-tilt
     // Even (Right): -25deg (looking left/center), Odd (Left): +25deg (looking right/center)
@@ -206,9 +206,9 @@ export default function ProgrammaticVideoGuide() {
     swapPhoneRotY.push(targetRotY);
   }
 
-  const currentPhoneX = enableSpecialAnimation ? interpolate(frame, swapInputs, swapPhoneX, easeInOutCubic) : 0;
-  const currentTextX = enableSpecialAnimation ? interpolate(frame, swapInputs, swapTextX, easeInOutCubic) : 0;
-  const phoneRotationY = enableSpecialAnimation ? interpolate(frame, swapInputs, swapPhoneRotY, easeInOutCubic) : 0;
+  const currentPhoneX = enableSpecialAnimation ? interpolate(frame, swapInputs, swapPhoneX, easeInOutCubic) : 25;
+  const currentTextX = enableSpecialAnimation ? interpolate(frame, swapInputs, swapTextX, easeInOutCubic) : -25;
+  const phoneRotationY = enableSpecialAnimation ? interpolate(frame, swapInputs, swapPhoneRotY, easeInOutCubic) : -25;
 
   // Active scene determination for passing to 3D Canvas
   let activeSceneIndex = sceneTimings.findIndex((timing) => timing && frame >= timing.S && frame < timing.E);
@@ -356,8 +356,8 @@ export default function ProgrammaticVideoGuide() {
 
               {/* Cinematic Text Overlay Container */}
               <div
-                className="absolute left-4 md:left-8 lg:left-12 top-1/2 w-[55%] md:w-[45%] pointer-events-none z-20"
-                style={{ transform: `translate(${currentTextX}vw, -50%)` }}
+                className="absolute left-1/2 top-1/2 w-[55%] md:w-[45%] pointer-events-none z-20"
+                style={{ transform: `translate(calc(-50% + ${currentTextX}vw), -50%)` }}
               >
                 {scenes.map((scene, idx) => {
                   const timing = sceneTimings[idx] || { S: 0, E: 120 };
@@ -404,6 +404,7 @@ export default function ProgrammaticVideoGuide() {
                 currentPhoneX={currentPhoneX}
                 phoneRotationY={phoneRotationY}
                 isFullscreen={isFullscreen}
+                enableSpecialAnimation={enableSpecialAnimation}
                 interpolate={interpolate}
               />
             </div>
@@ -742,11 +743,17 @@ export default function ProgrammaticVideoGuide() {
 
             <div className="relative w-full aspect-video bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 rounded-2xl overflow-hidden cursor-crosshair border-4 border-slate-800 shadow-2xl" onClick={handleLogoModalClick}>
               {/* Fake UI for reference context */}
-              <div className="absolute top-1/2 left-12 w-[45%] pointer-events-none -translate-y-1/2">
+              <div 
+                className="absolute top-1/2 left-1/2 w-[45%] pointer-events-none"
+                style={{ transform: 'translate(calc(-50% - 25vw), -50%)' }}
+              >
                 <h2 className="text-4xl font-extrabold text-white mb-4 opacity-20">Title Reference</h2>
                 <p className="text-xl text-blue-200 opacity-20">Subtitle reference text area.</p>
               </div>
-              <div className="absolute top-1/2 right-24 w-[200px] h-[400px] bg-slate-800/40 rounded-[35px] border-4 border-slate-700/50 pointer-events-none -translate-y-1/2"></div>
+              <div 
+                className="absolute top-1/2 left-1/2 w-[200px] h-[400px] bg-slate-800/40 rounded-[35px] border-4 border-slate-700/50 pointer-events-none"
+                style={{ transform: 'translate(calc(-50% + 25vw), -50%)' }}
+              ></div>
 
               {/* The Logo preview inside modal */}
               {logo && (
