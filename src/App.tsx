@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Zap, Upload, Plus, Trash2, Maximize, Minimize, MousePointerClick, X, Clock, LayoutGrid, Crosshair, Sparkles, Download, FileJson } from 'lucide-react';
+import { Play, Pause, RotateCcw, Zap, Upload, Plus, Trash2, Maximize, Minimize, MousePointerClick, X, Clock, LayoutGrid, Crosshair, Sparkles, Download } from 'lucide-react';
 import JSZip from 'jszip';
 import PhoneMockup from './components/PhoneMockup';
 
