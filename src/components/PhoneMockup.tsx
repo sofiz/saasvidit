@@ -39,7 +39,7 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
       className="absolute top-1/2 left-1/2 z-10 phone-wrapper"
       style={{
         perspective: '1200px',
-        transform: `translate(calc(-50% + ${currentPhoneX}vw), -50%)`
+        transform: `translate(calc(-50% + ${currentPhoneX}px), -50%) scale(var(--phone-scale, 1))`
       }}
     >
       {/* Floating & 360 Spin Wrapper */}

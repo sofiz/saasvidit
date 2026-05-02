@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Zap, Upload, Plus, Trash2, Maximize, Minimize, MousePointerClick, X, Clock, LayoutGrid, Crosshair, Sparkles } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Play, Pause, RotateCcw, Zap, Upload, Plus, Trash2, Maximize, Minimize, MousePointerClick, X, Clock, LayoutGrid, Crosshair, Sparkles, Download, FileJson } from 'lucide-react';
+import JSZip from 'jszip';
 import PhoneMockup from './components/PhoneMockup';
 
 interface Scene {
@@ -140,6 +141,36 @@ export default function ProgrammaticVideoGuide() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [touchModalSceneIdx, setTouchModalSceneIdx] = useState<number | null>(null);
+  
+  // --- SCALING LOGIC ---
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+  const logoPickerRef = useRef<HTMLDivElement>(null);
+  const [previewScale, setPreviewScale] = useState(1);
+  const [logoPickerScale, setLogoPickerScale] = useState(1);
+
+  useEffect(() => {
+    const updateScale = () => {
+      if (previewContainerRef.current) {
+        const { width } = previewContainerRef.current.getBoundingClientRect();
+        setPreviewScale(width / 1920);
+      }
+      if (logoPickerRef.current) {
+        const { width } = logoPickerRef.current.getBoundingClientRect();
+        setLogoPickerScale(width / 1920);
+      }
+    };
+    
+    updateScale();
+    const resizeObserver = new ResizeObserver(updateScale);
+    if (previewContainerRef.current) resizeObserver.observe(previewContainerRef.current);
+    if (logoPickerRef.current) resizeObserver.observe(logoPickerRef.current);
+    
+    window.addEventListener('resize', updateScale);
+    return () => {
+      window.removeEventListener('resize', updateScale);
+      resizeObserver.disconnect();
+    };
+  }, [isFullscreen, showLogoPicker]);
 
   // Playback Loop
   useEffect(() => {
@@ -181,8 +212,8 @@ export default function ProgrammaticVideoGuide() {
     const { S, E } = timing;
 
     const isEven = i % 2 === 0;
-    const targetPhoneX = isEven ? 25 : -25; // Symmetric move 25vw right or left
-    const targetTextX = isEven ? -25 : 25;   // Symmetric move 25vw left or right
+    const targetPhoneX = isEven ? 480 : -480; // Symmetric move 480px right or left (based on 1920px width)
+    const targetTextX = isEven ? -480 : 480;   // Symmetric move 480px left or right
 
     // Each scene swap adds a spin, but lands on a specific side-tilt
     // Even (Right): -25deg (looking left/center), Odd (Left): +25deg (looking right/center)
@@ -206,8 +237,8 @@ export default function ProgrammaticVideoGuide() {
     swapPhoneRotY.push(targetRotY);
   }
 
-  const currentPhoneX = enableSpecialAnimation ? interpolate(frame, swapInputs, swapPhoneX, easeInOutCubic) : 25;
-  const currentTextX = enableSpecialAnimation ? interpolate(frame, swapInputs, swapTextX, easeInOutCubic) : -25;
+  const currentPhoneX = enableSpecialAnimation ? interpolate(frame, swapInputs, swapPhoneX, easeInOutCubic) : 480;
+  const currentTextX = enableSpecialAnimation ? interpolate(frame, swapInputs, swapTextX, easeInOutCubic) : -480;
   const phoneRotationY = enableSpecialAnimation ? interpolate(frame, swapInputs, swapPhoneRotY, easeInOutCubic) : -25;
 
   // Active scene determination for passing to 3D Canvas
@@ -297,6 +328,75 @@ export default function ProgrammaticVideoGuide() {
     }
   };
 
+  // --- EXPORT / IMPORT LOGIC ---
+  const handleExport = async () => {
+    try {
+      const zip = new JSZip();
+      const projectData = {
+        logo,
+        logoX,
+        logoY,
+        logoSize,
+        logoOpacity,
+        enableSpecialAnimation,
+        scenes,
+        version: "1.0"
+      };
+
+      zip.file("project.json", JSON.stringify(projectData, null, 2));
+      
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `project_${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export failed", err);
+      alert("Failed to export project.");
+    }
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const projectJsonFile = zip.file("project.json");
+      
+      if (!projectJsonFile) {
+        throw new Error("Invalid project file: project.json missing.");
+      }
+
+      const content = await projectJsonFile.async("string");
+      const data = JSON.parse(content);
+
+      // Basic validation
+      if (!data.scenes) throw new Error("Invalid project data.");
+
+      // Update state
+      setLogo(data.logo);
+      setLogoX(data.logoX ?? 10);
+      setLogoY(data.logoY ?? 10);
+      setLogoSize(data.logoSize ?? 120);
+      setLogoOpacity(data.logoOpacity ?? 100);
+      setEnableSpecialAnimation(data.enableSpecialAnimation ?? false);
+      setScenes(data.scenes);
+      setFrame(0);
+      
+      alert("Project imported successfully!");
+    } catch (err) {
+      console.error("Import failed", err);
+      alert("Failed to import project. Make sure it's a valid project ZIP.");
+    } finally {
+      e.target.value = ""; // Reset input
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-white font-sans p-6 flex flex-col items-center justify-center relative">
 
@@ -332,80 +432,90 @@ export default function ProgrammaticVideoGuide() {
             )}
 
             <div
+              ref={previewContainerRef}
               onClick={() => isFullscreen && setIsPlaying(!isPlaying)}
               className={`relative bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 overflow-hidden shadow-2xl transition-all duration-300 ${isFullscreen
                 ? 'w-full h-full max-h-screen max-w-[177.78vh] aspect-video cursor-pointer'
                 : 'w-full aspect-video rounded-2xl border border-slate-800'
                 }`}
             >
-              {/* BRANDING LOGO */}
-              {logo && (
-                <img
-                  src={logo}
-                  alt="Brand Logo"
-                  className="absolute z-50 pointer-events-none object-contain"
-                  style={{
-                    left: `${logoX}%`,
-                    top: `${logoY}%`,
-                    width: `${logoSize}px`,
-                    opacity: logoOpacity / 100,
-                    transform: 'translate(-50%, -50%)'
-                  }}
-                />
-              )}
-
-              {/* Cinematic Text Overlay Container */}
-              <div
-                className="absolute left-1/2 top-1/2 w-[55%] md:w-[45%] pointer-events-none z-20"
-                style={{ transform: `translate(calc(-50% + ${currentTextX}vw), -50%)` }}
+              {/* Scaling Wrapper: Everything inside here is relative to 1920x1080 */}
+              <div 
+                className="absolute top-1/2 left-1/2 w-[1920px] h-[1080px] origin-center pointer-events-none"
+                style={{ 
+                  transform: `translate(-50%, -50%) scale(${previewScale})`,
+                  pointerEvents: isFullscreen ? 'auto' : 'none'
+                }}
               >
-                {scenes.map((scene, idx) => {
-                  const timing = sceneTimings[idx] || { S: 0, E: 120 };
-                  const { S, E } = timing;
-                  const transLen = Math.min(15, (E - S) / 4);
-                  const opacity = interpolate(frame, [S, S + transLen, E - transLen, E], [0, 1, 1, 0]);
-                  const yOffset = interpolate(frame, [S, S + transLen, E - transLen, E], [20, 0, 0, -20]);
+                {/* BRANDING LOGO */}
+                {logo && (
+                  <img
+                    src={logo}
+                    alt="Brand Logo"
+                    className="absolute z-50 pointer-events-none object-contain"
+                    style={{
+                      left: `${logoX}%`,
+                      top: `${logoY}%`,
+                      width: `${logoSize}px`,
+                      opacity: logoOpacity / 100,
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                  />
+                )}
 
-                  return (
-                    <div
-                      key={`text-${scene.id}`}
-                      className="absolute left-0 w-full pr-4"
-                      style={{ opacity, transform: `translateY(${yOffset}px)` }}
-                    >
-                      <h2
-                        className={`mb-2 lg:mb-4 leading-tight tracking-tight drop-shadow-lg ${isFullscreen ? 'text-4xl md:text-5xl lg:text-6xl' : 'text-2xl sm:text-3xl lg:text-4xl xl:text-5xl'}`}
-                        style={{
-                          fontFamily: scene.titleFont === 'Tajawal' ? '"Tajawal", sans-serif' : '"Roboto", sans-serif',
-                          fontWeight: scene.titleWeight === 'bold' ? 700 : scene.titleWeight === 'extrabold' ? 800 : 400,
-                          color: scene.titleColor || '#ffffff'
-                        }}
+                {/* Cinematic Text Overlay Container */}
+                <div
+                  className="absolute left-1/2 top-1/2 w-[800px] pointer-events-none z-20"
+                  style={{ transform: `translate(calc(-50% + ${currentTextX}px), -50%)` }}
+                >
+                  {scenes.map((scene, idx) => {
+                    const timing = sceneTimings[idx] || { S: 0, E: 120 };
+                    const { S, E } = timing;
+                    const transLen = Math.min(15, (E - S) / 4);
+                    const opacity = interpolate(frame, [S, S + transLen, E - transLen, E], [0, 1, 1, 0]);
+                    const yOffset = interpolate(frame, [S, S + transLen, E - transLen, E], [40, 0, 0, -40]);
+
+                    return (
+                      <div
+                        key={`text-${scene.id}`}
+                        className="absolute left-0 w-full pr-4"
+                        style={{ opacity, transform: `translateY(${yOffset}px)` }}
                       >
-                        {scene.title}
-                      </h2>
-                      <p
-                        className={`leading-relaxed max-w-md drop-shadow-md line-clamp-3 ${isFullscreen ? 'text-lg md:text-xl lg:text-2xl' : 'text-sm sm:text-base lg:text-lg xl:text-xl'}`}
-                        style={{
-                          fontFamily: scene.subFont === 'Tajawal' ? '"Tajawal", sans-serif' : '"Roboto", sans-serif',
-                          fontWeight: scene.subWeight === 'bold' ? 700 : scene.subWeight === 'extrabold' ? 800 : 400,
-                          color: scene.subColor || '#bfdbfe'
-                        }}
-                      >
-                        {scene.sub}
-                      </p>
-                    </div>
-                  );
-                })}
+                        <h2
+                          className="mb-6 leading-tight tracking-tight drop-shadow-lg text-7xl"
+                          style={{
+                            fontFamily: scene.titleFont === 'Tajawal' ? '"Tajawal", sans-serif' : '"Roboto", sans-serif',
+                            fontWeight: scene.titleWeight === 'bold' ? 700 : scene.titleWeight === 'extrabold' ? 800 : 400,
+                            color: scene.titleColor || '#ffffff'
+                          }}
+                        >
+                          {scene.title}
+                        </h2>
+                        <p
+                          className="leading-relaxed max-w-2xl drop-shadow-md line-clamp-3 text-3xl"
+                          style={{
+                            fontFamily: scene.subFont === 'Tajawal' ? '"Tajawal", sans-serif' : '"Roboto", sans-serif',
+                            fontWeight: scene.subWeight === 'bold' ? 700 : scene.subWeight === 'extrabold' ? 800 : 400,
+                            color: scene.subColor || '#bfdbfe'
+                          }}
+                        >
+                          {scene.sub}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <PhoneMockup
+                  scenes={scenes}
+                  frame={frame}
+                  sceneTimings={sceneTimings}
+                  currentPhoneX={currentPhoneX}
+                  phoneRotationY={phoneRotationY}
+                  enableSpecialAnimation={enableSpecialAnimation}
+                  interpolate={interpolate}
+                />
               </div>
-
-              <PhoneMockup
-                scenes={scenes}
-                frame={frame}
-                sceneTimings={sceneTimings}
-                currentPhoneX={currentPhoneX}
-                phoneRotationY={phoneRotationY}
-                enableSpecialAnimation={enableSpecialAnimation}
-                interpolate={interpolate}
-              />
             </div>
 
             {/* Timeline Controls */}
@@ -463,17 +573,34 @@ export default function ProgrammaticVideoGuide() {
               <span className="font-semibold text-slate-100 flex items-center gap-2">
                 <LayoutGrid size={18} className="text-blue-500" /> Project Settings
               </span>
-              <button 
-                onClick={() => {
-                  if (confirm("Reset project? All progress will be lost.")) {
-                    localStorage.removeItem(STORAGE_KEY);
-                    window.location.reload();
-                  }
-                }}
-                className="text-[10px] text-slate-500 hover:text-red-400 transition-colors uppercase tracking-wider font-bold"
-              >
-                Reset Project
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleExport}
+                  title="Export Project (.zip)"
+                  className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all"
+                >
+                  <Download size={16} />
+                </button>
+                <label 
+                  title="Import Project (.zip)"
+                  className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all cursor-pointer"
+                >
+                  <Upload size={16} />
+                  <input type="file" accept=".zip" className="hidden" onChange={handleImport} />
+                </label>
+                <div className="w-px h-4 bg-slate-800 mx-1"></div>
+                <button 
+                  onClick={() => {
+                    if (confirm("Reset project? All progress will be lost.")) {
+                      localStorage.removeItem(STORAGE_KEY);
+                      window.location.reload();
+                    }
+                  }}
+                  className="text-[10px] text-slate-500 hover:text-red-400 transition-colors uppercase tracking-wider font-bold"
+                >
+                  Reset
+                </button>
+              </div>
             </div>
 
             {/* Special Animation Toggle */}
@@ -740,38 +867,47 @@ export default function ProgrammaticVideoGuide() {
               <p className="text-sm text-slate-400">Click anywhere on the preview below to place your watermark/logo.</p>
             </div>
 
-            <div className="relative w-full aspect-video bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 rounded-2xl overflow-hidden cursor-crosshair border-4 border-slate-800 shadow-2xl" onClick={handleLogoModalClick}>
-              {/* Fake UI for reference context */}
+            <div 
+              ref={logoPickerRef}
+              className="relative w-full aspect-video bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 rounded-2xl overflow-hidden cursor-crosshair border-4 border-slate-800 shadow-2xl" 
+              onClick={handleLogoModalClick}
+            >
               <div 
-                className="absolute top-1/2 left-1/2 w-[45%] pointer-events-none"
-                style={{ transform: 'translate(calc(-50% - 25vw), -50%)' }}
+                className="absolute top-1/2 left-1/2 w-[1920px] h-[1080px] origin-center pointer-events-none"
+                style={{ transform: `translate(-50%, -50%) scale(${logoPickerScale})` }}
               >
-                <h2 className="text-4xl font-extrabold text-white mb-4 opacity-20">Title Reference</h2>
-                <p className="text-xl text-blue-200 opacity-20">Subtitle reference text area.</p>
-              </div>
-              <div 
-                className="absolute top-1/2 left-1/2 w-[200px] h-[400px] bg-slate-800/40 rounded-[35px] border-4 border-slate-700/50 pointer-events-none"
-                style={{ transform: 'translate(calc(-50% + 25vw), -50%)' }}
-              ></div>
+                {/* Fake UI for reference context */}
+                <div 
+                  className="absolute top-1/2 left-1/2 w-[800px] pointer-events-none"
+                  style={{ transform: 'translate(calc(-50% - 480px), -50%)' }}
+                >
+                  <h2 className="text-7xl font-extrabold text-white mb-6 opacity-20">Title Reference</h2>
+                  <p className="text-3xl text-blue-200 opacity-20">Subtitle reference text area.</p>
+                </div>
+                <div 
+                  className="absolute top-1/2 left-1/2 w-[270px] h-[550px] bg-slate-800/40 rounded-[45px] border-4 border-slate-700/50 pointer-events-none"
+                  style={{ transform: 'translate(calc(-50% + 480px), -50%) scale(1.25)' }}
+                ></div>
 
-              {/* The Logo preview inside modal */}
-              {logo && (
-                <img
-                  src={logo}
-                  className="absolute z-50 pointer-events-none transition-all duration-75 object-contain drop-shadow-lg"
-                  style={{
-                    left: `${logoX}%`,
-                    top: `${logoY}%`,
-                    width: `${logoSize}px`,
-                    opacity: logoOpacity / 100,
-                    transform: 'translate(-50%, -50%)'
-                  }}
-                  alt="Target Logo"
-                />
-              )}
+                {/* The Logo preview inside modal */}
+                {logo && (
+                  <img
+                    src={logo}
+                    className="absolute z-50 pointer-events-none transition-all duration-75 object-contain drop-shadow-lg"
+                    style={{
+                      left: `${logoX}%`,
+                      top: `${logoY}%`,
+                      width: `${logoSize}px`,
+                      opacity: logoOpacity / 100,
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                    alt="Target Logo"
+                  />
+                )}
 
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-                <div className="bg-black/60 px-4 py-2 rounded-full text-white text-sm font-medium backdrop-blur-sm">Click to place logo</div>
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                  <div className="bg-black/60 px-8 py-4 rounded-full text-white text-2xl font-medium backdrop-blur-sm">Click to place logo</div>
+                </div>
               </div>
             </div>
           </div>
@@ -787,9 +923,8 @@ export default function ProgrammaticVideoGuide() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-        .phone-wrapper { --phone-scale: 0.5; }
-        @media (min-width: 768px) { .phone-wrapper { --phone-scale: 0.65; } }
-        @media (min-width: 1024px) { .phone-wrapper { --phone-scale: 0.75; } }
+        .phone-wrapper { --phone-scale: 1.25; }
+
       `}} />
     </div>
   );
