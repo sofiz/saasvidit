@@ -1,73 +1,87 @@
-# React + TypeScript + Vite
+# Programmatic Video Studio
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A browser-based video editor for creating animated product showcase videos with a 3D phone mockup. Upload app screenshots, add titles, and export a ready-to-use project — all without leaving the browser.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Multi-scene editor** — add, remove, and reorder scenes, each with its own title, subtitle, screenshot, and duration
+- **3D phone mockup** — a fully 3D-extruded iPhone-style device rendered in CSS/Three.js, with animated floating and rotation
+- **Special animation mode** — cinematic scene transitions where the phone swings side-to-side and text slides in from the opposite direction
+- **Touch animation overlay** — place a tap indicator on any scene to highlight a specific point on the screenshot
+- **Branding logo** — upload a logo, position it anywhere on the canvas, and control its size and opacity
+- **Font & color controls** — choose font family (Roboto or Tajawal), weight, and color for title and subtitle text
+- **Fullscreen preview** — one-click fullscreen playback mode
+- **Auto-save** — project state is automatically persisted to `localStorage`
+- **Export / Import** — save your project as a `.zip` file and reload it at any time
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Layer | Library |
+|---|---|
+| Framework | React 19 + TypeScript |
+| Build tool | Vite |
+| Styling | Tailwind CSS v4 |
+| 3D / WebGL | Three.js, @react-three/fiber, @react-three/drei |
+| Icons | lucide-react |
+| Zip export | JSZip |
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js ≥ 18
+- npm
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Install & run
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Build for production
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
+```
+
+The output is written to `dist/`.
+
+### Preview the production build
+
+```bash
+npm run preview
+```
+
+## Project Structure
+
+```
+src/
+├── App.tsx              # Main editor — state, animation pipeline, UI
+├── components/
+│   └── PhoneMockup.tsx  # 3D CSS phone with screen and touch overlays
+├── assets/              # Static assets
+├── App.css              # Global animation styles
+├── index.css            # Tailwind base styles
+└── main.tsx             # React entry point
+```
+
+## Usage
+
+1. **Add scenes** using the **+** button in the sidebar. Each scene represents one "slide" of the video.
+2. **Upload a screenshot** for each scene. The image is displayed inside the phone screen.
+3. **Edit the title and subtitle** text, choose a font, and pick colors.
+4. **Set the duration** (in seconds) for how long each scene plays.
+5. *(Optional)* Enable **Special Animation** for cinematic transitions between scenes.
+6. *(Optional)* Upload a **brand logo** and drag it to your preferred position on the canvas.
+7. *(Optional)* Add a **touch animation** to highlight an interaction point on a scene's screenshot.
+8. Click **Fullscreen Preview** to watch the full animation.
+9. Use **Export** to save the project as a `.zip`, and **Import** to restore it later.
+
+## Linting
+
+```bash
+npm run lint
 ```
