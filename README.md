@@ -69,20 +69,6 @@ Our **in-browser video rendering** engine changes the game:
 
 This application uses a deterministic **DOM-to-video compilation pipeline**:
 
-```mermaid
-graph TD
-    A[Interactive Timeline UI] -->|Set Exporter Phase| B[Initialize FFmpeg WebAssembly Core]
-    B -->|Load CDN Assets| C[WASM Filesystem Ready]
-    C -->|Frame Scrubber Loop| D[Seek to Frame 'i' of Total Frames]
-    D -->|Wait for React Paint| E[Rasterize DOM Container using modern-screenshot]
-    E -->|Convert to Uint8Array| F[Write Frame to WASM Virtual FS as frame_i.png]
-    F -->|Progress Update| G{All Frames Captured?}
-    G -- No -->|Increment Frame| D
-    G -- Yes --> H[Invoke WebAssembly FFmpeg Stitching CLI]
-    H -->|Stitch with libx264 yuv420p y| I[Compile to output.mp4]
-    I -->|Create Blob URL| J[Trigger Automated Browser Download]
-    J -->|Garbage Collection| K[Delete Temporary PNGs & Free WASM Heap]
-```
 
 1.  **WebAssembly Initialization:** The editor loads the `~30MB` WebAssembly-compiled version of FFmpeg via an unpkg CDN, establishing a virtual sandboxed filesystem directly inside a web worker.
 2.  **Deterministic Frame Capturing:** The exporter stops live playback, loops over the timeline from frame `0` to the last frame, and uses `modern-screenshot` to freeze the DOM container at a forced 1920x1080 resolution.
@@ -128,18 +114,6 @@ This outputs a static web app directory (`dist/`) that can be hosted instantly o
 > *   `Cross-Origin-Opener-Policy: same-origin`
 > *   `Cross-Origin-Embedder-Policy: require-corp`
 
----
-
-## 📈 Search Engine Optimization (SEO) & Ranking Details
-
-If you are deploying this project online and want to maximize search visibility for keywords like **browser video editor**, **free online screen editor**, or **WASM video compiler**, keep in mind the following best practices included in this template:
-
-*   **Semantic HTML:** Structured with native elements (`<header>`, `<main>`, `<section>`, `<h1>`) ensuring search crawler indexability.
-*   **Structured Metadata:** Ready for head tag integration to optimize for rich snippet search results.
-*   **Fast LCP (Largest Contentful Paint):** Leverages static client-side asset generation with Vite, boosting mobile-first performance signals.
-*   **Detailed Documentation:** The comprehensive feature layout and structured technical guide ensure this repository ranks for deep technical queries surrounding WebAssembly-based rendering.
-
----
 
 ## ⚡ Performance Optimization Tips
 
