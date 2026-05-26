@@ -72,7 +72,7 @@ export default function ProgrammaticVideoGuide() {
   const [scenes, setScenes] = useState<Scene[]>(savedData?.scenes || [
     {
       id: crypto.randomUUID(),
-      title: "Welcome to SofizPay",
+      title: "Welcome to SaasVidit",
       titleFont: "Roboto",
       titleWeight: "extrabold",
       titleColor: "#ffffff",
@@ -366,7 +366,7 @@ export default function ProgrammaticVideoGuide() {
       // Trigger download
       const link = document.createElement('a');
       link.href = videoUrl;
-      link.download = `SofizStudio_Video_${new Date().toISOString().split('T')[0]}.mp4`;
+      link.download = `SaasVidit_Video_${new Date().toISOString().split('T')[0]}.mp4`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

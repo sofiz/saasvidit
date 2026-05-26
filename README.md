@@ -1,4 +1,4 @@
-# 🎬 Browser Video Editor — Programmatic Video Studio
+# 🎬 SaasVidit — Browser Video Editor
 
 [![React](https://img.shields.io/badge/React-18.x-blue.svg?logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg?logo=typescript)](https://www.typescriptlang.org/)
@@ -89,8 +89,8 @@ Ensure you have [Node.js](https://nodejs.org/) (v18 or higher) and `npm` install
 ### ⚙️ Installation & Local Development
 1.  Clone the repository to your local computer:
     ```bash
-    git clone https://github.com/your-username/browser-video-editor.git
-    cd browser-video-editor
+    git clone https://github.com/your-username/saasvidit.git
+    cd saasvidit
     ```
 2.  Install the required dependencies:
     ```bash
