@@ -89,7 +89,7 @@ Ensure you have [Node.js](https://nodejs.org/) (v18 or higher) and `npm` install
 ### ⚙️ Installation & Local Development
 1.  Clone the repository to your local computer:
     ```bash
-    git clone https://github.com/your-username/saasvidit.git
+    git clone https://github.com/sofiz/saasvidit.git
     cd saasvidit
     ```
 2.  Install the required dependencies:
