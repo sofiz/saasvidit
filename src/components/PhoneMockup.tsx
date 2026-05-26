@@ -23,6 +23,8 @@ interface PhoneMockupProps {
   phoneRotationY: number;
   enableSpecialAnimation: boolean;
   interpolate: (frame: number, input: number[], output: number[], easing?: (t: number) => number) => number;
+  isExporting?: boolean;
+  FPS?: number;
 }
 
 const PhoneMockup: React.FC<PhoneMockupProps> = ({
@@ -32,7 +34,9 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
   currentPhoneX,
   phoneRotationY,
   enableSpecialAnimation,
-  interpolate
+  interpolate,
+  isExporting = false,
+  FPS = 30
 }) => {
   return (
     <div
@@ -43,10 +47,27 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
       }}
     >
       {/* Floating & 360 Spin Wrapper */}
-      <div className="animate-float" style={{ transformStyle: 'preserve-3d' }}>
+      <div 
+        className="animate-float" 
+        style={{ 
+          transformStyle: 'preserve-3d',
+          ...(isExporting ? {
+            animationPlayState: 'paused',
+            animationDelay: `-${frame / FPS}s`
+          } : {})
+        }}
+      >
         <div style={{ transform: `rotateY(${phoneRotationY}deg)`, transformStyle: 'preserve-3d' }}>
           {/* Dynamic 3D Shadow */}
-          <div className="phone-shadow"></div>
+          <div 
+            className="phone-shadow"
+            style={{
+              ...(isExporting ? {
+                animationPlayState: 'paused',
+                animationDelay: `-${frame / FPS}s`
+              } : {})
+            }}
+          />
 
           {/* True 3D Extruded Phone Asset */}
           <div className="w-[270px] h-[550px] phone-mockup-3d relative flex flex-col" style={{ transformStyle: 'preserve-3d' }}>
