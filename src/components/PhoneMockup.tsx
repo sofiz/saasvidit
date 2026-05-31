@@ -1,5 +1,21 @@
-import React from 'react';
-import { Image as ImageIcon } from 'lucide-react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
+import { useGLTF } from '@react-three/drei';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import {
+  CanvasTexture,
+  DoubleSide,
+  Group,
+  LinearFilter,
+  Mesh,
+  MeshBasicMaterial,
+  MeshStandardMaterial,
+  Object3D,
+  PMREMGenerator,
+  Quaternion,
+  SRGBColorSpace,
+  Texture
+} from 'three';
 
 interface Scene {
   id: string;
@@ -27,6 +43,316 @@ interface PhoneMockupProps {
   FPS?: number;
 }
 
+const MODEL_URL = '/models/tabletop_macbook_iphone.glb';
+const SCREEN_MESH_NAME = 'xXDHkMplTIDAXLN';
+const SCREEN_WIDTH = 720;
+const SCREEN_HEIGHT = 1558;
+const IPHONE_FLOATING_QUATERNION = new Quaternion(0, 0, 0, 1);
+
+function getVisibleSceneIndex(
+  frame: number,
+  scenes: Scene[],
+  sceneTimings: SceneTiming[],
+  enableSpecialAnimation: boolean
+) {
+  const switchOffset = enableSpecialAnimation ? 15 : 0;
+
+  for (let idx = 0; idx < scenes.length; idx++) {
+    const timing = sceneTimings[idx] || { S: 0, E: 120 };
+    const isVisible =
+      frame >= (idx === 0 ? 0 : timing.S + switchOffset) &&
+      frame < (idx === scenes.length - 1 ? Number.MAX_SAFE_INTEGER : timing.E + switchOffset);
+
+    if (isVisible) return idx;
+  }
+
+  return Math.max(0, scenes.length - 1);
+}
+
+function drawContain(ctx: CanvasRenderingContext2D, image: HTMLImageElement) {
+  const scale = Math.min(SCREEN_WIDTH / image.naturalWidth, SCREEN_HEIGHT / image.naturalHeight);
+  const width = image.naturalWidth * scale;
+  const height = image.naturalHeight * scale;
+  const x = (SCREEN_WIDTH - width) / 2;
+  const y = (SCREEN_HEIGHT - height) / 2;
+
+  ctx.drawImage(image, x, y, width, height);
+}
+
+function drawEmptyState(ctx: CanvasRenderingContext2D) {
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+  const cx = SCREEN_WIDTH / 2;
+  const cy = SCREEN_HEIGHT / 2;
+
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+  ctx.lineWidth = 12;
+  ctx.roundRect(cx - 86, cy - 120, 172, 150, 24);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(cx - 42, cy - 80, 18, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(cx - 66, cy + 8);
+  ctx.lineTo(cx - 8, cy - 44);
+  ctx.lineTo(cx + 74, cy + 16);
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(203, 213, 225, 0.68)';
+  ctx.font = '600 34px Roboto, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Empty Screen', cx, cy + 96);
+}
+
+function drawTouch(
+  ctx: CanvasRenderingContext2D,
+  scene: Scene,
+  frame: number,
+  timing: SceneTiming,
+  interpolate: PhoneMockupProps['interpolate']
+) {
+  if (!scene.showTouch) return;
+
+  const { S, E } = timing;
+  const touchStart = E - Math.min(30, (E - S) / 2);
+  const touchEnd = E;
+  if (frame < touchStart || frame > touchEnd) return;
+
+  const touchOpacity = interpolate(frame, [touchStart, touchStart + 5, touchEnd - 5, touchEnd], [0, 0.8, 0.8, 0]);
+  const touchScale = interpolate(frame, [touchStart, touchStart + 10, touchStart + 15], [1.5, 0.8, 0.8]);
+  const rippleScale = interpolate(frame, [touchStart + 10, touchStart + 25], [0.8, 2.5]);
+  const rippleOpacity = interpolate(frame, [touchStart + 10, touchStart + 25], [0.6, 0]);
+  const x = (scene.touchX / 100) * SCREEN_WIDTH;
+  const y = (scene.touchY / 100) * SCREEN_HEIGHT;
+  const radius = 46;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = rippleOpacity;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * rippleScale, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.globalAlpha = touchOpacity;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.42)';
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * touchScale, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function useScreenTexture({
+  scene,
+  timing,
+  frame,
+  interpolate
+}: {
+  scene: Scene | undefined;
+  timing: SceneTiming | undefined;
+  frame: number;
+  interpolate: PhoneMockupProps['interpolate'];
+}) {
+  const imageCacheRef = useRef(new Map<string, HTMLImageElement>());
+  const [, forceUpdate] = useState(0);
+
+  const [{ canvas, sourceCanvas, texture }] = useState(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = SCREEN_WIDTH;
+    canvas.height = SCREEN_HEIGHT;
+    const sourceCanvas = document.createElement('canvas');
+    sourceCanvas.width = SCREEN_WIDTH;
+    sourceCanvas.height = SCREEN_HEIGHT;
+
+    const nextTexture = new CanvasTexture(canvas);
+    nextTexture.colorSpace = SRGBColorSpace;
+    nextTexture.minFilter = LinearFilter;
+    nextTexture.magFilter = LinearFilter;
+    nextTexture.flipY = false;
+    return { canvas, sourceCanvas, texture: nextTexture };
+  });
+
+  useEffect(() => {
+    const src = scene?.image;
+    if (!src || imageCacheRef.current.has(src)) return;
+
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => forceUpdate((tick) => tick + 1);
+    image.src = src;
+    imageCacheRef.current.set(src, image);
+  }, [scene?.image]);
+
+  /* eslint-disable react-hooks/immutability */
+  useEffect(() => {
+    const sourceCtx = sourceCanvas.getContext('2d');
+    const textureCtx = canvas.getContext('2d');
+    if (!sourceCtx || !textureCtx) return;
+
+    sourceCtx.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    sourceCtx.fillStyle = '#000000';
+    sourceCtx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    const cachedImage = scene?.image ? imageCacheRef.current.get(scene.image) : null;
+    if (cachedImage?.complete && cachedImage.naturalWidth > 0) {
+      drawContain(sourceCtx, cachedImage);
+    } else {
+      drawEmptyState(sourceCtx);
+    }
+
+    if (scene && timing) {
+      drawTouch(sourceCtx, scene, frame, timing, interpolate);
+    }
+
+    textureCtx.save();
+    textureCtx.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    textureCtx.translate(0, SCREEN_HEIGHT);
+    textureCtx.scale(1, -1);
+    textureCtx.drawImage(sourceCanvas, 0, 0);
+    textureCtx.restore();
+
+    // Three textures are mutable render resources; flag the canvas upload after each redraw.
+    texture.needsUpdate = true;
+  }, [canvas, frame, interpolate, scene, sourceCanvas, texture, timing]);
+  /* eslint-enable react-hooks/immutability */
+
+  useEffect(() => () => texture.dispose(), [texture]);
+
+  return texture;
+}
+
+function DeviceModel({
+  screenTexture,
+  phoneRotationY
+}: {
+  screenTexture: Texture;
+  phoneRotationY: number;
+}) {
+  const gltf = useGLTF(MODEL_URL, '/draco/');
+
+  const phone = useMemo(() => {
+    const source = gltf.scene.getObjectByName('iphone');
+    if (!source) return new Group();
+
+    const clone = source.clone(true) as Object3D;
+
+    clone.position.set(0, 0, 0);
+    clone.quaternion.copy(IPHONE_FLOATING_QUATERNION);
+
+    clone.traverse((object) => {
+      if (!(object instanceof Mesh)) return;
+
+      object.castShadow = true;
+      object.receiveShadow = true;
+
+      if (object.name === SCREEN_MESH_NAME) {
+        object.material = new MeshBasicMaterial({
+          map: screenTexture,
+          side: DoubleSide,
+          toneMapped: false
+        });
+        return;
+      }
+
+      const material = object.material;
+      if (material instanceof MeshStandardMaterial) {
+        object.material = material.clone();
+        object.material.envMapIntensity = 0.8;
+        object.material.roughness = Math.max(0.28, object.material.roughness);
+      }
+    });
+
+    return clone;
+  }, [gltf.scene, screenTexture]);
+
+  useEffect(() => {
+    const screen = phone.getObjectByName(SCREEN_MESH_NAME) as Mesh | undefined;
+    if (screen) {
+      screen.material = new MeshBasicMaterial({
+        map: screenTexture,
+        side: DoubleSide,
+        toneMapped: false
+      });
+    }
+  }, [phone, screenTexture]);
+
+  return (
+    <group scale={1.28} position={[0, -0.28, 0]} rotation={[0, phoneRotationY * (Math.PI / 180), 0]}>
+      <primitive object={phone} />
+    </group>
+  );
+}
+
+function SceneEnvironment() {
+  const { gl, scene } = useThree();
+
+  useEffect(() => {
+    const pmremGenerator = new PMREMGenerator(gl);
+    const roomEnvironment = new RoomEnvironment();
+    const environmentMap = pmremGenerator.fromScene(roomEnvironment, 0.04).texture;
+
+    scene.environment = environmentMap;
+
+    return () => {
+      scene.environment = null;
+      environmentMap.dispose();
+      roomEnvironment.clear();
+      pmremGenerator.dispose();
+    };
+  }, [gl, scene]);
+
+  return null;
+}
+
+function PhoneScene({
+  scenes,
+  frame,
+  sceneTimings,
+  phoneRotationY,
+  enableSpecialAnimation,
+  interpolate,
+  isExporting = false
+}: Omit<PhoneMockupProps, 'currentPhoneX' | 'FPS'>) {
+  const activeSceneIndex = getVisibleSceneIndex(frame, scenes, sceneTimings, enableSpecialAnimation);
+  const activeScene = scenes[activeSceneIndex];
+  const activeTiming = sceneTimings[activeSceneIndex];
+  const screenTexture = useScreenTexture({
+    scene: activeScene,
+    timing: activeTiming,
+    frame,
+    interpolate
+  });
+
+  return (
+    <Canvas
+      shadows
+      dpr={isExporting ? 1 : [1, 2]}
+      gl={{
+        alpha: true,
+        antialias: true,
+        preserveDrawingBuffer: true,
+        powerPreference: 'high-performance'
+      }}
+      camera={{ position: [0, 0, 10.2], fov: 27 }}
+    >
+      <SceneEnvironment />
+      <ambientLight intensity={0.95} />
+      <directionalLight position={[3, 5, 6]} intensity={2.4} castShadow />
+      <directionalLight position={[-4, -1, 4]} intensity={0.75} color="#8fb7ff" />
+      <Suspense fallback={null}>
+        <DeviceModel screenTexture={screenTexture} phoneRotationY={phoneRotationY} />
+      </Suspense>
+    </Canvas>
+  );
+}
+
 const PhoneMockup: React.FC<PhoneMockupProps> = ({
   scenes,
   frame,
@@ -42,263 +368,47 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
     <div
       className="absolute top-1/2 left-1/2 z-10 phone-wrapper"
       style={{
-        perspective: '1200px',
         transform: `translate(calc(-50% + ${currentPhoneX}px), -50%) scale(var(--phone-scale, 1))`
       }}
     >
-      {/* Floating & 360 Spin Wrapper */}
-      <div 
-        className="animate-float" 
-        style={{ 
-          transformStyle: 'preserve-3d',
-          ...(isExporting ? {
-            animationPlayState: 'paused',
-            animationDelay: `-${frame / FPS}s`
-          } : {})
-        }}
-      >
-        <div style={{ transform: `rotateY(${phoneRotationY}deg)`, transformStyle: 'preserve-3d' }}>
-          {/* Dynamic 3D Shadow */}
-          <div 
-            className="phone-shadow"
-            style={{
-              ...(isExporting ? {
+      <div
+        className="phone-device-float"
+        style={{
+          ...(isExporting
+            ? {
                 animationPlayState: 'paused',
                 animationDelay: `-${frame / FPS}s`
-              } : {})
+              }
+            : {})
+        }}
+      >
+        <div className="phone-device-stage">
+          <div
+            className="phone-shadow"
+            style={{
+              ...(isExporting
+                ? {
+                    animationPlayState: 'paused',
+                    animationDelay: `-${frame / FPS}s`
+                  }
+                : {})
             }}
           />
-
-          {/* True 3D Extruded Phone Asset */}
-          <div className="w-[270px] h-[550px] phone-mockup-3d relative flex flex-col" style={{ transformStyle: 'preserve-3d' }}>
-
-            {/* Middle Edge Layers for 3D Extrusion (Thickness) */}
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div
-                key={`slice-${i}`}
-                className="absolute inset-0 bg-[#1a1a1a] rounded-[45px] border border-[#333333]/30 pointer-events-none"
-                style={{ transform: `translateZ(${12 - (i * 2)}px)` }}
-              />
-            ))}
-
-            {/* Hardware Buttons attached to center plane */}
-            <div className="absolute inset-0 pointer-events-none" style={{ transform: 'translateZ(0px)' }}>
-              <div className="absolute -left-1.5 top-24 w-1.5 h-8 bg-[#2a2a2a] rounded-l-md border-y border-l border-[#111111] shadow-inner"></div>
-              <div className="absolute -left-1.5 top-36 w-1.5 h-12 bg-[#2a2a2a] rounded-l-md border-y border-l border-[#111111] shadow-inner"></div>
-              <div className="absolute -left-1.5 top-52 w-1.5 h-12 bg-[#2a2a2a] rounded-l-md border-y border-l border-[#111111] shadow-inner"></div>
-              <div className="absolute -right-1.5 top-40 w-1.5 h-16 bg-[#2a2a2a] rounded-r-md border-y border-r border-[#111111] shadow-inner"></div>
-            </div>
-
-            {/* Back Face (Camera & Logo) */}
-            <div
-              className="absolute inset-0 bg-gradient-to-br from-[#222222] to-[#0a0a0a] rounded-[45px] border-[3px] border-[#1a1a1a] shadow-2xl"
-              style={{ transform: `translateZ(-14px) rotateY(180deg)`, transformStyle: 'preserve-3d' }}
-            >
-              {/* Apple Logo SVG */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[#555555] opacity-60">
-                <svg viewBox="0 0 512 512" fill="currentColor" className="w-14 h-14">
-                  <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.3 48.6-.8 90.5-84.4 103-118.4-45.2-18.2-62.7-59.5-62.1-92.2zM266.4 88.8c31.1-39.8 46.2-70.8 44.4-106-25.9 2.1-59 17.6-80 39.5-22.3 23.3-39.7 54.4-36.6 88.6 28.6 2.4 57.5-11.8 72.2-22.1z" />
-                </svg>
-              </div>
-
-              {/* iPhone Pro Camera Bump - 3D Stacked Base */}
-              <div className="absolute top-4 left-4 w-[135px] h-[140px]" style={{ transformStyle: 'preserve-3d' }}>
-                {/* Extruded base layers */}
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={`bump-layer-${i}`}
-                    className={`absolute inset-0 bg-[#151515] rounded-[36px] border border-white/5 ${i === 0 ? 'shadow-[4px_4px_12px_rgba(0,0,0,0.5)]' : ''}`}
-                    style={{ transform: `translateZ(${i * 1}px)` }}
-                  />
-                ))}
-
-                {/* Main Bump Surface */}
-                <div
-                  className="absolute inset-0 bg-gradient-to-br from-[#2a2a2a] to-[#111111] rounded-[36px] shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)] border border-[#333333]/40"
-                  style={{ transform: 'translateZ(6px)', transformStyle: 'preserve-3d' }}
-                >
-                  {/* Top Left Lens */}
-                  <div className="absolute top-2.5 left-2.5 w-[52px] h-[52px]" style={{ transformStyle: 'preserve-3d' }}>
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <div
-                        key={`lens-1-layer-${i}`}
-                        className="absolute inset-0 rounded-full bg-[#111] border border-[#222]"
-                        style={{ transform: `translateZ(${i * 1}px)` }}
-                      />
-                    ))}
-                    <div
-                      className="absolute inset-0 rounded-full bg-black border-[3.5px] border-[#333] shadow-[0_4px_12px_rgba(0,0,0,0.6)] flex items-center justify-center"
-                      style={{ transform: 'translateZ(4px)', transformStyle: 'preserve-3d' }}
-                    >
-                      <div className="w-8 h-8 rounded-full bg-[#111] relative flex items-center justify-center overflow-hidden" style={{ transform: 'translateZ(1px)' }}>
-                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-indigo-500/5 to-transparent opacity-30"></div>
-                        <div className="w-4 h-4 rounded-full bg-[#0a0a0a] border border-gray-800 flex items-center justify-center">
-                          <div className="w-2 h-2 rounded-full bg-slate-900 shadow-[0_0_8px_rgba(30,41,59,0.8)]"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bottom Left Lens */}
-                  <div className="absolute bottom-2.5 left-2.5 w-[52px] h-[52px]" style={{ transformStyle: 'preserve-3d' }}>
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <div
-                        key={`lens-2-layer-${i}`}
-                        className="absolute inset-0 rounded-full bg-[#111] border border-[#222]"
-                        style={{ transform: `translateZ(${i * 1}px)` }}
-                      />
-                    ))}
-                    <div
-                      className="absolute inset-0 rounded-full bg-black border-[3.5px] border-[#333] shadow-[0_4px_12px_rgba(0,0,0,0.6)] flex items-center justify-center"
-                      style={{ transform: 'translateZ(4px)', transformStyle: 'preserve-3d' }}
-                    >
-                      <div className="w-8 h-8 rounded-full bg-[#111] relative flex items-center justify-center overflow-hidden" style={{ transform: 'translateZ(1px)' }}>
-                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-indigo-500/5 to-transparent opacity-30"></div>
-                        <div className="w-4 h-4 rounded-full bg-[#0a0a0a] border border-gray-800 flex items-center justify-center">
-                          <div className="w-2 h-2 rounded-full bg-slate-900 shadow-[0_0_8px_rgba(30,41,59,0.8)]"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Middle Right Lens */}
-                  <div className="absolute top-1/2 -translate-y-1/2 right-6 w-[52px] h-[52px]" style={{ transformStyle: 'preserve-3d' }}>
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <div
-                        key={`lens-3-layer-${i}`}
-                        className="absolute inset-0 rounded-full bg-[#111] border border-[#222]"
-                        style={{ transform: `translateZ(${i * 1}px)` }}
-                      />
-                    ))}
-                    <div
-                      className="absolute inset-0 rounded-full bg-black border-[3.5px] border-[#333] shadow-[0_4px_12px_rgba(0,0,0,0.6)] flex items-center justify-center"
-                      style={{ transform: 'translateZ(4px)', transformStyle: 'preserve-3d' }}
-                    >
-                      <div className="w-8 h-8 rounded-full bg-[#111] relative flex items-center justify-center overflow-hidden" style={{ transform: 'translateZ(1px)' }}>
-                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-indigo-500/5 to-transparent opacity-30"></div>
-                        <div className="w-4 h-4 rounded-full bg-[#0a0a0a] border border-gray-800 flex items-center justify-center">
-                          <div className="w-2 h-2 rounded-full bg-slate-900 shadow-[0_0_8px_rgba(30,41,59,0.8)]"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Flash */}
-                  <div className="absolute top-3 right-8 w-6 h-6" style={{ transformStyle: 'preserve-3d' }}>
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div
-                        key={`flash-layer-${i}`}
-                        className="absolute inset-0 rounded-full bg-[#1a1a1a] border border-white/5"
-                        style={{ transform: `translateZ(${i * 1}px)` }}
-                      />
-                    ))}
-                    <div
-                      className="absolute inset-0 rounded-full bg-[#fff5eb] border border-[#1a1a1a] shadow-[0_2px_4px_rgba(0,0,0,0.4),_inset_0_0_6px_rgba(255,255,255,0.8)] flex items-center justify-center"
-                      style={{ transform: 'translateZ(3px)' }}
-                    >
-                      <div className="w-3 h-3 rounded-full bg-yellow-200 opacity-90 blur-[1px]"></div>
-                    </div>
-                  </div>
-
-                  {/* LiDAR / Sensor */}
-                  <div className="absolute bottom-3 right-8 w-6 h-6" style={{ transformStyle: 'preserve-3d' }}>
-                    {Array.from({ length: 2 }).map((_, i) => (
-                      <div
-                        key={`lidar-layer-${i}`}
-                        className="absolute inset-0 rounded-full bg-[#0a0a0a] border border-white/5"
-                        style={{ transform: `translateZ(${i * 1}px)` }}
-                      />
-                    ))}
-                    <div
-                      className="absolute inset-0 rounded-full bg-[#111] border border-[#333] shadow-[inset_0_0_4px_#000] flex items-center justify-center"
-                      style={{ transform: 'translateZ(2px)' }}
-                    >
-                      <div className="w-2.5 h-2.5 rounded-full bg-black"></div>
-                    </div>
-                  </div>
-
-                  {/* Mic hole */}
-                  <div
-                    className="absolute bottom-9 translate-y-1/2 right-5 w-2 h-2 rounded-full bg-[#111] shadow-[inset_0_0_2px_#000]"
-                    style={{ transform: 'translateZ(1px)' }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Front Face (Screen UI) */}
-            <div
-              className="absolute inset-0 bg-black rounded-[45px] p-[6px] flex flex-col overflow-hidden"
-              style={{ transform: `translateZ(14px)`, backfaceVisibility: 'hidden' }}
-            >
-              {/* Notch */}
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-24 h-7 bg-black rounded-full z-50 flex items-center justify-end px-3 border border-slate-800/80 shadow-sm">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-900/60 shadow-[0_0_6px_rgba(16,185,129,0.4)]"></div>
-              </div>
-
-              {/* Screen Glare */}
-              <div className="absolute inset-0 screen-glare pointer-events-none z-40 mix-blend-screen"></div>
-
-              {/* Dynamic Screens with Border */}
-              <div className="absolute inset-[4px] bg-slate-950 z-10 rounded-[41px] overflow-hidden border border-slate-800/50 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
-                {scenes.map((scene, idx) => {
-                  const timing = sceneTimings[idx] || { S: 0, E: 120 };
-                  const { S, E } = timing;
-                  const switchOffset = enableSpecialAnimation ? 15 : 0;
-                  const isVisible = frame >= (idx === 0 ? 0 : S + switchOffset) && 
-                                    frame < (idx === scenes.length - 1 ? 999999 : E + switchOffset);
-
-                  return (
-                    <div
-                      key={`img-${scene.id}`}
-                      className="absolute inset-0 flex items-center justify-center bg-black overflow-hidden"
-                      style={{ opacity: isVisible ? 1 : 0 }}
-                    >
-                      {scene.image ? (
-                        <img src={scene.image} alt={scene.title} className="w-full h-full object-contain" />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-slate-400 p-6 text-center">
-                          <ImageIcon size={48} className="mb-4 opacity-50" />
-                          <p className="text-[10px] font-medium">Empty Screen</p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* Touch Animation Overlay */}
-                <div className="absolute inset-0 z-50 pointer-events-none">
-                  {scenes.map((scene, idx) => {
-                    const timing = sceneTimings[idx] || { S: 0, E: 120 };
-                    const { S, E } = timing;
-                    const touchStart = E - Math.min(30, (E - S) / 2);
-                    const touchEnd = E;
-                    const touchOpacity = interpolate(frame, [touchStart, touchStart + 5, touchEnd - 5, touchEnd], [0, 0.8, 0.8, 0]);
-                    const touchScale = interpolate(frame, [touchStart, touchStart + 10, touchStart + 15], [1.5, 0.8, 0.8]);
-                    const rippleScale = interpolate(frame, [touchStart + 10, touchStart + 25], [0.8, 2.5]);
-                    const rippleOpacity = interpolate(frame, [touchStart + 10, touchStart + 25], [0.6, 0]);
-
-                    if (!scene.showTouch || frame < touchStart || frame > touchEnd) return null;
-
-                    return (
-                      <div
-                        key={`touch-${scene.id}`}
-                        className="absolute pointer-events-none"
-                        style={{ left: `${scene.touchX}%`, top: `${scene.touchY}%` }}
-                      >
-                        <div className="absolute w-12 h-12 bg-white/40 backdrop-blur-sm rounded-full border-2 border-white shadow-lg" style={{ transform: `translate(-50%, -50%) scale(${touchScale})`, opacity: touchOpacity }} />
-                        <div className="absolute w-12 h-12 bg-white rounded-full" style={{ transform: `translate(-50%, -50%) scale(${rippleScale})`, opacity: rippleOpacity }} />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
+          <PhoneScene
+            scenes={scenes}
+            frame={frame}
+            sceneTimings={sceneTimings}
+            phoneRotationY={phoneRotationY}
+            enableSpecialAnimation={enableSpecialAnimation}
+            interpolate={interpolate}
+            isExporting={isExporting}
+          />
         </div>
       </div>
     </div>
   );
 };
+
+useGLTF.preload(MODEL_URL, '/draco/');
 
 export default PhoneMockup;

@@ -413,7 +413,7 @@ export default function ProgrammaticVideoGuide() {
   const swapInputs = [0];
   const swapPhoneX = [25];
   const swapTextX = [-25];
-  const swapPhoneRotY = [-25]; // Start with the first scene's tilt
+  const swapPhoneRotY = [155]; // Start with the first scene's tilt
 
   for (let i = 0; i < scenes.length; i++) {
     const timing = sceneTimings[i] || { S: 0, E: 120 };
@@ -425,7 +425,7 @@ export default function ProgrammaticVideoGuide() {
 
     // Each scene swap adds a spin, but lands on a specific side-tilt
     // Even (Right): -25deg (looking left/center), Odd (Left): +25deg (looking right/center)
-    const targetRotY = (i * 360) + (isEven ? -25 : 25);
+    const targetRotY = (i * 360) + (isEven ? 155 : 205);
 
     if (i > 0) {
       const transEnd = Math.min(S + 30, E);

@@ -29,8 +29,23 @@ body {
     background: #475569;
   }
 
-  .phone-mockup-3d {
-    /* Transitions disabled to prevent interpolation lag between frame snapshots */
+  .phone-device-float {
+    position: relative;
+    transform-style: preserve-3d;
+    pointer-events: none;
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .phone-device-stage {
+    position: relative;
+    width: 660px;
+    height: 940px;
+    transform-style: preserve-3d;
+    pointer-events: none;
+  }
+
+  .phone-device-stage canvas {
+    display: block;
   }
 
   .screen-glare {
@@ -78,12 +93,12 @@ body {
 
 .phone-shadow {
   position: absolute;
-  bottom: -80px;
+  bottom: 18px;
   left: 50%;
-  width: 180px;
-  height: 30px;
+  width: 230px;
+  height: 38px;
   background: rgba(0, 0, 0, 0.5);
-  filter: blur(25px);
+  filter: blur(28px);
   border-radius: 50%;
   transform: translateX(-50%) rotateX(85deg);
   animation: shadow-float 6s ease-in-out infinite;
@@ -160,4 +175,3 @@ input[type="range"]::-webkit-slider-runnable-track {
 .timeline-glow {
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(0, 0, 0, 0.4);
 }
-
