@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Upload, Plus, Trash2, Maximize, Minimize, MousePointerClick, X, Clock, LayoutGrid, Crosshair, Sparkles, Download, Film, Loader2, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
+import { Play, Pause, RotateCcw, Upload, Plus, Trash2, Maximize, Minimize, MousePointerClick, X, Clock, LayoutGrid, Crosshair, Sparkles, Download, Film, Loader2, GripVertical } from 'lucide-react';
 import JSZip from 'jszip';
 import PhoneMockup from './components/PhoneMockup';
 import { getFFmpeg, captureDOMFrame, compileVideo, cleanupFSDirectory } from './utils/videoExporter';
@@ -176,19 +176,6 @@ export default function ProgrammaticVideoGuide() {
   const handleDragEnd = () => {
     setDraggedIndex(null);
     setDragOverIndex(null);
-  };
-
-  const handleMoveScene = (index: number, direction: 'up' | 'down') => {
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= scenes.length) return;
-
-    const newScenes = [...scenes];
-    const temp = newScenes[index];
-    newScenes[index] = newScenes[targetIndex];
-    newScenes[targetIndex] = temp;
-    setScenes(newScenes);
-    setSelectedSceneIndex(targetIndex); // Follow the scene to its new index
-    setFrame(0);
   };
 
   // Video Exporter State
