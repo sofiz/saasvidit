@@ -101,6 +101,10 @@ export async function compileVideo(
     'frame_%d.png',
     '-c:v',
     'libx264',
+    '-preset',
+    'slow',
+    '-crf',
+    '18',
     '-pix_fmt',
     'yuv420p',
     '-y', // Overwrite output if exists

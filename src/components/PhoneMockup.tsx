@@ -47,6 +47,10 @@ const MODEL_URL = '/models/tabletop_macbook_iphone.glb';
 const SCREEN_MESH_NAME = 'xXDHkMplTIDAXLN';
 const SCREEN_WIDTH = 720;
 const SCREEN_HEIGHT = 1558;
+const PHONE_MODEL_SCALE = 1.08;
+const PHONE_STAGE_WIDTH = 620;
+const PHONE_STAGE_HEIGHT = 900;
+const PHONE_EXPORT_DPR = 2;
 const IPHONE_FLOATING_QUATERNION = new Quaternion(0, 0, 0, 1);
 
 function getVisibleSceneIndex(
@@ -284,7 +288,7 @@ function DeviceModel({
   }, [phone, screenTexture]);
 
   return (
-    <group scale={1.28} position={[0, -0.28, 0]} rotation={[0, phoneRotationY * (Math.PI / 180), 0]}>
+    <group scale={PHONE_MODEL_SCALE} position={[0, -0.08, 0]} rotation={[0, phoneRotationY * (Math.PI / 180), 0]}>
       <primitive object={phone} />
     </group>
   );
@@ -333,14 +337,15 @@ function PhoneScene({
   return (
     <Canvas
       shadows
-      dpr={isExporting ? 1 : [1, 2]}
+      dpr={isExporting ? PHONE_EXPORT_DPR : [1, 2]}
       gl={{
         alpha: true,
         antialias: true,
         preserveDrawingBuffer: true,
         powerPreference: 'high-performance'
       }}
-      camera={{ position: [0, 0, 10.2], fov: 27 }}
+      camera={{ position: [0, 0, 10.2], fov: 30 }}
+      style={{ width: '100%', height: '100%' }}
     >
       <SceneEnvironment />
       <ambientLight intensity={0.95} />
@@ -382,7 +387,13 @@ const PhoneMockup: React.FC<PhoneMockupProps> = ({
             : {})
         }}
       >
-        <div className="phone-device-stage">
+        <div
+          className="phone-device-stage"
+          style={{
+            width: PHONE_STAGE_WIDTH,
+            height: PHONE_STAGE_HEIGHT
+          }}
+        >
           <div
             className="phone-shadow"
             style={{

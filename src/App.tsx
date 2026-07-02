@@ -445,9 +445,9 @@ export default function ProgrammaticVideoGuide() {
     swapPhoneRotY.push(targetRotY);
   }
 
-  const currentPhoneX = enableSpecialAnimation ? interpolate(frame, swapInputs, swapPhoneX, easeInOutCubic) : 480;
-  const currentTextX = enableSpecialAnimation ? interpolate(frame, swapInputs, swapTextX, easeInOutCubic) : -480;
-  const phoneRotationY = enableSpecialAnimation ? interpolate(frame, swapInputs, swapPhoneRotY, easeInOutCubic) : -25;
+  const currentPhoneX = enableSpecialAnimation ? interpolate(frame, swapInputs, swapPhoneX, easeInOutCubic) : 620;
+  const currentTextX = enableSpecialAnimation ? interpolate(frame, swapInputs, swapTextX, easeInOutCubic) : -570;
+  const phoneRotationY = enableSpecialAnimation ? interpolate(frame, swapInputs, swapPhoneRotY, easeInOutCubic) : 155;
 
   // Active scene determination for passing to 3D Canvas
   let activeSceneIndex = sceneTimings.findIndex((timing) => timing && frame >= timing.S && frame < timing.E);
@@ -482,6 +482,8 @@ export default function ProgrammaticVideoGuide() {
     setScenes(newScenes);
     // Automatically select the newly created scene
     setSelectedSceneIndex(newScenes.length - 1);
+    setFrame(TOTAL_FRAMES);
+    setIsPlaying(false);
   };
 
   const handleDeleteScene = (idToRemove: string) => {
@@ -625,48 +627,14 @@ export default function ProgrammaticVideoGuide() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-sans p-6 flex flex-col items-center justify-start relative">
+    <div className="apple-studio min-h-screen bg-slate-950 text-white font-sans flex flex-col items-center justify-start relative">
 
-      {/* Header Panel */}
-      {/* <div className="w-full max-w-7xl mb-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-4 shrink-0 bg-slate-900/20 p-6 rounded-2xl border border-slate-800/40 backdrop-blur-md">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-slate-100 flex items-center gap-3 tracking-tight">
-            <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-500 shadow-md">
-              <Zap size={20} className="fill-current" />
-            </span> 
-            Programmatic Video Studio
-          </h1>
-          <p className="text-slate-400 text-xs md:text-sm mt-1.5 font-medium">
-            A high-fidelity programmatic workspace for screen walkthroughs and branding.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          {isFullscreen ? (
-            <button
-              onClick={() => setIsFullscreen(false)}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-semibold text-sm transition-all border border-slate-700 shadow-md"
-            >
-              <Minimize size={16} />
-              <span>Exit Fullscreen</span>
-            </button>
-          ) : (
-            <button
-              onClick={toggleFullscreen}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold text-sm transition-all shadow-lg shadow-blue-900/30 w-full md:w-auto"
-            >
-              <Maximize size={16} />
-              <span>Fullscreen Preview</span>
-            </button>
-          )}
-        </div>
-      </div> */}
-
-      <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="apple-workspace w-full max-w-7xl grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
         {/* LEFT COLUMN: PLAYER & SEGMENT TIMELINE & STORYBOARD */}
         <div className="col-span-1 lg:col-span-2 flex flex-col gap-6">
 
-          <div className={isFullscreen ? "fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center p-6 animate-in fade-in duration-300" : "flex flex-col gap-4"}>
+          <div className={isFullscreen ? "fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center p-6 animate-in fade-in duration-300" : "apple-preview-stage relative flex flex-col"}>
 
             {/* Wrapper to constrain and center preview element in fullscreen */}
             <div
@@ -677,7 +645,7 @@ export default function ProgrammaticVideoGuide() {
               <div
                 ref={previewContainerRef}
                 onClick={() => isFullscreen && setIsPlaying(!isPlaying)}
-                className={`relative bg-gradient-to-br from-indigo-950/60 via-slate-900/60 to-blue-950/60 overflow-hidden shadow-2xl transition-all duration-300 border border-slate-800/80 backdrop-blur-md ${isFullscreen
+                className={`apple-preview relative bg-gradient-to-br from-indigo-950/60 via-slate-900/60 to-blue-950/60 overflow-hidden shadow-2xl transition-all duration-300 border border-slate-800/80 backdrop-blur-md ${isFullscreen
                   ? 'cursor-pointer'
                   : 'w-full aspect-video rounded-2xl'
                   }`}
@@ -689,7 +657,7 @@ export default function ProgrammaticVideoGuide() {
                 {/* Scaling Wrapper: 1920x1080 canvas */}
                 <div
                   ref={videoSceneRef}
-                  className="absolute top-1/2 left-1/2 w-[1920px] h-[1080px] origin-center pointer-events-none bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950"
+                  className="apple-video-canvas absolute top-1/2 left-1/2 w-[1920px] h-[1080px] origin-center pointer-events-none bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950"
                   style={{
                     transform: `translate(-50%, -50%) scale(${previewScale})`,
                     pointerEvents: isFullscreen ? 'auto' : 'none'
@@ -713,15 +681,20 @@ export default function ProgrammaticVideoGuide() {
 
                   {/* Text Overlays */}
                   <div
-                    className="absolute left-1/2 top-1/2 w-[800px] pointer-events-none z-20"
+                    className="absolute left-1/2 top-1/2 w-[700px] pointer-events-none z-20"
                     style={{ transform: `translate(calc(-50% + ${currentTextX}px), -50%)` }}
                   >
                     {scenes.map((scene, idx) => {
                       const timing = sceneTimings[idx] || { S: 0, E: 120 };
                       const { S, E } = timing;
                       const transLen = Math.min(15, (E - S) / 4);
-                      const opacity = interpolate(frame, [S, S + transLen, E - transLen, E], [0, 1, 1, 0]);
-                      const yOffset = interpolate(frame, [S, S + transLen, E - transLen, E], [40, 0, 0, -40]);
+                      const isSceneVisible = frame >= S && frame < E;
+                      const opacity = isSceneVisible
+                        ? interpolate(frame, [S, S + transLen, E - transLen, E], [1, 1, 1, 0])
+                        : 0;
+                      const yOffset = isSceneVisible
+                        ? interpolate(frame, [S, S + transLen, E - transLen, E], [0, 0, 0, -32])
+                        : 0;
 
                       return (
                         <div
@@ -730,7 +703,7 @@ export default function ProgrammaticVideoGuide() {
                           style={{ opacity, transform: `translateY(${yOffset}px)` }}
                         >
                           <h2
-                            className="mb-6 leading-tight tracking-tight drop-shadow-2xl text-7xl"
+                            className="mb-5 leading-tight tracking-tight drop-shadow-2xl text-6xl"
                             style={{
                               fontFamily: scene.titleFont === 'Tajawal' ? '"Tajawal", sans-serif' : '"Roboto", sans-serif',
                               fontWeight: scene.titleWeight === 'bold' ? 700 : scene.titleWeight === 'extrabold' ? 800 : 400,
@@ -740,7 +713,7 @@ export default function ProgrammaticVideoGuide() {
                             {scene.title}
                           </h2>
                           <p
-                            className="leading-relaxed max-w-2xl drop-shadow-xl line-clamp-3 text-3xl"
+                            className="leading-relaxed max-w-xl drop-shadow-xl line-clamp-3 text-2xl"
                             style={{
                               fontFamily: scene.subFont === 'Tajawal' ? '"Tajawal", sans-serif' : '"Roboto", sans-serif',
                               fontWeight: scene.subWeight === 'bold' ? 700 : scene.subWeight === 'extrabold' ? 800 : 400,
@@ -766,103 +739,108 @@ export default function ProgrammaticVideoGuide() {
                     FPS={FPS}
                   />
                 </div>
-              </div>
-            </div>
 
-            {/* Segmented Timeline & Controls */}
-            <div className={`flex flex-col gap-3.5 bg-slate-900/90 border border-slate-800/80 shadow-2xl p-4 rounded-2xl backdrop-blur-md transition-all duration-300 ${isFullscreen ? 'w-full max-w-4xl mt-8' : 'w-full'}`}>
+                {/* Segmented Timeline & Controls */}
+                <div
+                  className={`apple-timeline apple-timeline-overlay flex flex-col gap-2 bg-slate-950/60 border border-slate-800/60 shadow-2xl p-2.5 rounded-xl backdrop-blur-md transition-all duration-300 ${isFullscreen ? 'w-full max-w-4xl' : 'w-full'}`}
+                  onClick={(e) => e.stopPropagation()}
+                >
 
-              {/* Scrubber track showing scene boundaries */}
-              <div className="relative w-full h-7 flex items-center">
-                {/* Horizontal segmented colored blocks background */}
-                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2.5 rounded-full bg-slate-950 border border-slate-800/40 overflow-hidden flex pointer-events-none">
-                  {scenes.map((scene, idx) => {
-                    const timing = sceneTimings[idx];
-                    if (!timing) return null;
-                    const widthPct = (scene.duration / (TOTAL_FRAMES / FPS)) * 100;
+                  {/* Scrubber track showing scene boundaries */}
+                  <div className="relative w-full h-5 flex items-center">
+                    {/* Horizontal segmented colored blocks background */}
+                    <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-slate-950/70 border border-slate-800/40 overflow-hidden flex pointer-events-none">
+                      {scenes.map((scene, idx) => {
+                        const timing = sceneTimings[idx];
+                        if (!timing) return null;
+                        const widthPct = (scene.duration / (TOTAL_FRAMES / FPS)) * 100;
 
-                    const colors = [
-                      'bg-blue-500/10',
-                      'bg-indigo-500/10',
-                      'bg-violet-500/10',
-                      'bg-purple-500/10'
-                    ];
-                    const isActive = activeSceneIndex === idx;
-                    const activeColorClass = isActive
-                      ? 'bg-blue-500/30 border-y border-blue-500/30'
-                      : colors[idx % colors.length];
+                        const colors = [
+                          'bg-blue-500/10',
+                          'bg-indigo-500/10',
+                          'bg-violet-500/10',
+                          'bg-purple-500/10'
+                        ];
+                        const isActive = activeSceneIndex === idx;
+                        const activeColorClass = isActive
+                          ? 'bg-blue-500/30 border-y border-blue-500/30'
+                          : colors[idx % colors.length];
 
-                    return (
-                      <div
-                        key={`seg-${scene.id}`}
-                        className={`h-full border-r border-slate-950 last:border-r-0 transition-colors ${activeColorClass}`}
-                        style={{ width: `${widthPct}%` }}
-                      />
-                    );
-                  })}
-                </div>
+                        return (
+                          <div
+                            key={`seg-${scene.id}`}
+                            className={`h-full border-r border-slate-950 last:border-r-0 transition-colors ${activeColorClass}`}
+                            style={{ width: `${widthPct}%` }}
+                          />
+                        );
+                      })}
+                    </div>
 
-                {/* Range overlay slider scrubber */}
-                <input
-                  type="range"
-                  min="0"
-                  max={TOTAL_FRAMES}
-                  value={frame}
-                  onChange={(e) => { setFrame(Number(e.target.value)); setIsPlaying(false); }}
-                  className="absolute inset-x-0 w-full h-8 opacity-90 appearance-none bg-transparent cursor-ew-resize z-20"
-                  style={{ margin: 0, outline: 'none' }}
-                />
-              </div>
+                    {/* Range overlay slider scrubber */}
+                    <input
+                      type="range"
+                      min="0"
+                      max={TOTAL_FRAMES}
+                      value={frame}
+                      onChange={(e) => { setFrame(Number(e.target.value)); setIsPlaying(false); }}
+                      className="absolute inset-x-0 w-full h-6 opacity-80 appearance-none bg-transparent cursor-ew-resize z-20"
+                      style={{ margin: 0, outline: 'none' }}
+                    />
+                  </div>
 
-              {/* Lower Controls Console */}
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      if (frame >= TOTAL_FRAMES) setFrame(0);
-                      setIsPlaying(!isPlaying);
-                    }}
-                    className="p-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all shadow-md shadow-blue-900/30"
-                  >
-                    {isPlaying ? <Pause size={16} /> : <Play size={16} fill="currentColor" />}
-                  </button>
-                  <button
-                    onClick={() => { setFrame(0); setIsPlaying(true); }}
-                    className="p-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-xl transition-all"
-                    title="Rewind"
-                  >
-                    <RotateCcw size={16} />
-                  </button>
-                </div>
+                  {/* Lower Controls Console */}
+                  <div className="apple-player-controls flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          if (frame >= TOTAL_FRAMES) setFrame(0);
+                          setIsPlaying(!isPlaying);
+                        }}
+                        className="apple-icon-button apple-play-button p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all shadow-md shadow-blue-900/30"
+                        aria-label={isPlaying ? 'Pause preview' : 'Play preview'}
+                      >
+                        {isPlaying ? <Pause size={14} /> : <Play size={14} fill="currentColor" />}
+                      </button>
+                      <button
+                        onClick={() => { setFrame(0); setIsPlaying(true); }}
+                        className="apple-icon-button p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-lg transition-all"
+                        title="Rewind"
+                        aria-label="Rewind preview"
+                      >
+                        <RotateCcw size={14} />
+                      </button>
+                    </div>
 
-                {/* Time stamps */}
-                <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-semibold uppercase tracking-wider font-mono">
-                  <span>Playhead:</span>
-                  <span className="text-slate-300 font-bold">{(frame / FPS).toFixed(2)}s</span>
-                  <span className="text-slate-600 font-normal">/</span>
-                  <span>Duration:</span>
-                  <span className="text-blue-400 font-bold">{(TOTAL_FRAMES / FPS).toFixed(2)}s</span>
-                </div>
+                    {/* Time stamps */}
+                    <div className="apple-timecode flex items-center gap-1.5 text-[9px] text-slate-500 font-semibold uppercase tracking-wider font-mono">
+                      <span>Playhead:</span>
+                      <span className="text-slate-300 font-bold">{(frame / FPS).toFixed(2)}s</span>
+                      <span className="text-slate-600 font-normal">/</span>
+                      <span>Duration:</span>
+                      <span className="text-blue-400 font-bold">{(TOTAL_FRAMES / FPS).toFixed(2)}s</span>
+                    </div>
 
-                {/* Screen size mode button */}
-                <div>
-                  {isFullscreen ? (
-                    <button
-                      onClick={() => setIsFullscreen(false)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-red-950/30 hover:text-red-400 hover:border-red-500/40 text-slate-300 rounded-lg text-xs font-semibold border border-slate-700 transition-all"
-                    >
-                      <Minimize size={14} />
-                      <span>Exit</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={toggleFullscreen}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-semibold border border-slate-700 transition-all"
-                    >
-                      <Maximize size={14} />
-                      <span>Preview</span>
-                    </button>
-                  )}
+                    {/* Screen size mode button */}
+                    <div>
+                      {isFullscreen ? (
+                        <button
+                          onClick={() => setIsFullscreen(false)}
+                          className="apple-button apple-button-secondary flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 hover:bg-red-950/30 hover:text-red-400 hover:border-red-500/40 text-slate-300 rounded-lg text-[11px] font-semibold border border-slate-700 transition-all"
+                        >
+                          <Minimize size={13} />
+                          <span>Exit</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={toggleFullscreen}
+                          className="apple-button apple-button-secondary flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-[11px] font-semibold border border-slate-700 transition-all"
+                        >
+                          <Maximize size={13} />
+                          <span>Preview</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -870,7 +848,7 @@ export default function ProgrammaticVideoGuide() {
 
           {/* STORYBOARD CONTAINER */}
           {!isFullscreen && (
-            <div className="bg-slate-900/30 border border-slate-800/80 rounded-2xl p-4 flex flex-col gap-3 shadow-xl backdrop-blur-md">
+            <div className="apple-panel apple-storyboard bg-slate-900/30 border border-slate-800/80 rounded-2xl p-4 flex flex-col gap-3 shadow-xl backdrop-blur-md">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
                   <Film className="text-blue-500" size={16} />
@@ -979,10 +957,10 @@ export default function ProgrammaticVideoGuide() {
         </div>
 
         {/* RIGHT COLUMN: PROPERTY INSPECTOR */}
-        <div className="col-span-1 flex flex-col bg-slate-900/40 backdrop-blur-md rounded-2xl border border-slate-800/80 shadow-2xl overflow-hidden min-h-[660px] self-start w-full">
+        <div className="apple-inspector col-span-1 flex flex-col bg-slate-900/40 backdrop-blur-md rounded-2xl border border-slate-800/80 shadow-2xl overflow-hidden min-h-[660px] self-start w-full">
 
           {/* Active Tabs Navigation */}
-          <div className="flex bg-slate-950/60 border-b border-slate-800 shrink-0">
+          <div className="apple-tabs flex bg-slate-950/60 border-b border-slate-800 shrink-0">
             <button
               onClick={() => setActiveTab('scene')}
               className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-xs font-bold border-b-2 transition-all ${activeTab === 'scene'
@@ -1016,14 +994,14 @@ export default function ProgrammaticVideoGuide() {
           </div>
 
           {/* Inspector Panel Body */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar bg-slate-900/20 max-h-[calc(100vh-20rem)] min-h-[580px]">
+          <div className="apple-inspector-body flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar bg-slate-900/20 max-h-[calc(100vh-20rem)] min-h-[580px]">
 
             {/* TAB 1: SCENE EDIT PANEL */}
             {activeTab === 'scene' && (
               <div className="space-y-5 animate-in fade-in duration-150">
 
                 {/* Selected scene heading metadata */}
-                <div className="flex items-center justify-between bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+                {/* <div className="flex items-center justify-between bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
                   <div>
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Editing Content</span>
                     <h4 className="text-sm font-bold text-white">Scene {selectedSceneIndex + 1} of {scenes.length}</h4>
@@ -1046,10 +1024,10 @@ export default function ProgrammaticVideoGuide() {
                       <ArrowDown size={14} />
                     </button>
                   </div>
-                </div>
+                </div> */}
 
                 {/* Headline Settings card */}
-                <div className="space-y-2.5 bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
+                <div className="apple-control-group space-y-2.5 bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
                   <div className="flex justify-between items-center px-0.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Headline Text</label>
                     <div className="flex items-center gap-1.5">
@@ -1088,7 +1066,7 @@ export default function ProgrammaticVideoGuide() {
                 </div>
 
                 {/* Subtitle Settings card */}
-                <div className="space-y-2.5 bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
+                <div className="apple-control-group space-y-2.5 bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
                   <div className="flex justify-between items-center px-0.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Subtitle Text</label>
                     <div className="flex items-center gap-1.5">
@@ -1127,7 +1105,7 @@ export default function ProgrammaticVideoGuide() {
                 </div>
 
                 {/* Duration control slider */}
-                <div className="space-y-3.5 bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
+                <div className="apple-control-group space-y-3.5 bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
                   <div className="flex justify-between items-center px-0.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Scene Duration</label>
                     <span className="text-xs font-bold font-mono text-blue-400">{scenes[selectedSceneIndex].duration}s</span>
@@ -1145,26 +1123,46 @@ export default function ProgrammaticVideoGuide() {
                 </div>
 
                 {/* Screen screenshot upload / Touch trigger hotspots */}
-                <div className="space-y-3.5 bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Mockup Screenshot</label>
+                <div className="apple-control-group apple-setting-card apple-screenshot-card bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
+                  <div className="apple-setting-header">
+                    <div className="apple-setting-title-row">
+                      <span className="apple-setting-icon">
+                        <MousePointerClick size={16} />
+                      </span>
+                      <div>
+                        <span className="apple-setting-eyebrow">Mockup Screenshot</span>
+                        <h5 className="apple-setting-title">Tap Animation</h5>
+                      </div>
+                    </div>
+                    <label className="apple-switch-control relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={scenes[selectedSceneIndex].showTouch}
+                        onChange={(e) => handleUpdateScene(selectedSceneIndex, 'showTouch', e.target.checked)}
+                        className="sr-only peer"
+                        disabled={!scenes[selectedSceneIndex].image}
+                      />
+                      <span className="apple-switch"></span>
+                    </label>
+                  </div>
 
-                  <div className="flex gap-4 items-stretch">
+                  <div className="apple-setting-main">
                     <div className="shrink-0">
                       {!scenes[selectedSceneIndex].image ? (
                         <>
                           <input type="file" accept="image/*" id={`upload-${scenes[selectedSceneIndex].id}`} className="hidden" onChange={(e) => handleImageUpload(selectedSceneIndex, e)} />
-                          <label htmlFor={`upload-${scenes[selectedSceneIndex].id}`} className="flex flex-col items-center justify-center w-24 h-[112px] rounded-lg border border-dashed border-slate-800 bg-slate-950 cursor-pointer hover:bg-slate-900 hover:border-slate-600 transition-colors text-slate-400 group">
+                          <label htmlFor={`upload-${scenes[selectedSceneIndex].id}`} className="apple-screen-upload flex flex-col items-center justify-center w-24 h-[112px] rounded-lg border border-dashed border-slate-800 bg-slate-950 cursor-pointer hover:bg-slate-900 hover:border-slate-600 transition-colors text-slate-400 group">
                             <Upload size={18} className="mb-1 text-slate-500 group-hover:text-blue-400 group-hover:scale-110 transition-all" />
                             <span className="text-[9px] font-bold text-center px-2">Upload File</span>
                           </label>
                         </>
                       ) : (
-                        <div className="relative w-24 h-[112px] rounded-lg border border-slate-800 overflow-hidden cursor-pointer group shadow-lg" onClick={() => setTouchModalSceneIdx(selectedSceneIndex)}>
+                        <div className="apple-screen-thumb relative w-24 h-[112px] rounded-lg border border-slate-800 overflow-hidden cursor-pointer group shadow-lg" onClick={() => setTouchModalSceneIdx(selectedSceneIndex)}>
                           <img src={scenes[selectedSceneIndex].image || undefined} className="w-full h-full object-contain bg-slate-950" alt="" />
                           {scenes[selectedSceneIndex].showTouch && (
                             <div className="absolute w-3 h-3 bg-blue-500/80 rounded-full border border-white pointer-events-none animate-pulse" style={{ left: `${scenes[selectedSceneIndex].touchX}%`, top: `${scenes[selectedSceneIndex].touchY}%`, transform: 'translate(-50%, -50%)' }} />
                           )}
-                          <div className="absolute inset-x-0 bottom-0 bg-slate-950/95 backdrop-blur-xs py-1.5 text-center border-t border-slate-900/60 group-hover:bg-blue-600 transition-colors">
+                          <div className="apple-screen-thumb-action absolute inset-x-0 bottom-0 bg-slate-950/95 backdrop-blur-xs py-1.5 text-center border-t border-slate-900/60 group-hover:bg-blue-600 transition-colors">
                             <span className="text-[8px] font-bold text-white flex items-center justify-center gap-1">
                               <MousePointerClick size={10} /> Set Touch
                             </span>
@@ -1173,29 +1171,21 @@ export default function ProgrammaticVideoGuide() {
                       )}
                     </div>
 
-                    <div className="flex-1 flex flex-col justify-between py-0.5">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-300">Tap Animation</span>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" checked={scenes[selectedSceneIndex].showTouch} onChange={(e) => handleUpdateScene(selectedSceneIndex, 'showTouch', e.target.checked)} className="sr-only peer" disabled={!scenes[selectedSceneIndex].image} />
-                            <div className="w-8 h-4 bg-slate-850 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-800 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-500 peer-disabled:opacity-50"></div>
-                          </label>
-                        </div>
-                        <p className="text-[9px] text-slate-500 leading-relaxed font-medium">
-                          {scenes[selectedSceneIndex].image
-                            ? "Click the screenshot thumbnail to place a cursor touch hotspot on screen."
-                            : "Upload a mockup screenshot image to enable touch animations."
-                          }
-                        </p>
-                      </div>
+                    <div className="apple-setting-copy">
+                      <p className="apple-setting-description">
+                        {scenes[selectedSceneIndex].image
+                          ? "Click the screenshot thumbnail to place a cursor touch hotspot on screen."
+                          : "Upload a mockup screenshot image to enable touch animations."
+                        }
+                      </p>
                       {scenes[selectedSceneIndex].image && (
                         <button
+                          type="button"
                           onClick={() => {
                             handleUpdateScene(selectedSceneIndex, 'image', null);
                             handleUpdateScene(selectedSceneIndex, 'showTouch', false);
                           }}
-                          className="text-[10px] text-red-400 hover:text-red-300 hover:underline font-semibold text-left mt-2 self-start"
+                          className="apple-danger-button"
                         >
                           Remove Screen Image
                         </button>
@@ -1209,24 +1199,24 @@ export default function ProgrammaticVideoGuide() {
 
             {/* TAB 2: BRANDING & WATERMARK PANEL */}
             {activeTab === 'branding' && (
-              <div className="space-y-5 animate-in fade-in duration-150">
+              <div className="apple-branding-panel space-y-5 animate-in fade-in duration-150">
 
                 {/* Branding settings card */}
-                <div className="space-y-4 bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
+                <div className="apple-control-group apple-logo-card space-y-4 bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Project Watermark / Logo</label>
 
-                  <div className="flex gap-4 items-start">
+                  <div className="apple-logo-row flex gap-4 items-start">
                     <div className="shrink-0">
                       {!logo ? (
                         <>
                           <input type="file" accept="image/*" id="upload-logo-branding" className="hidden" onChange={handleLogoUpload} />
-                          <label htmlFor="upload-logo-branding" className="flex flex-col items-center justify-center w-20 h-20 rounded-lg border border-dashed border-slate-800 bg-slate-950 cursor-pointer hover:bg-slate-900 hover:border-slate-600 transition-colors text-slate-400 group">
+                          <label htmlFor="upload-logo-branding" className="apple-logo-tile flex flex-col items-center justify-center w-20 h-20 rounded-lg border border-dashed border-slate-800 bg-slate-950 cursor-pointer hover:bg-slate-900 hover:border-slate-600 transition-colors text-slate-400 group">
                             <Upload size={18} className="mb-1 text-slate-500 group-hover:text-blue-400 group-hover:scale-110 transition-all" />
                             <span className="text-[9px] font-bold text-center px-1">Upload</span>
                           </label>
                         </>
                       ) : (
-                        <div className="relative w-20 h-20 rounded-lg border border-slate-800 bg-slate-950 overflow-hidden flex items-center justify-center group shadow-md">
+                        <div className="apple-logo-tile relative w-20 h-20 rounded-lg border border-slate-800 bg-slate-950 overflow-hidden flex items-center justify-center group shadow-md">
                           <img src={logo} className="w-14 h-14 object-contain" alt="" />
                           <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => setLogo(null)} className="p-1.5 bg-red-950/80 border border-red-500/30 text-red-400 hover:text-red-300 rounded-md transition-colors">
@@ -1259,7 +1249,7 @@ export default function ProgrammaticVideoGuide() {
                   {logo && (
                     <button
                       onClick={() => setShowLogoPicker(true)}
-                      className="w-full mt-2 py-2 bg-slate-950 hover:bg-slate-900 border border-slate-800 text-xs font-semibold rounded-lg text-slate-300 flex items-center justify-center gap-2 transition-all hover:border-slate-700"
+                      className="apple-watermark-button w-full mt-2 py-2 bg-slate-950 hover:bg-slate-900 border border-slate-800 text-xs font-semibold rounded-lg text-slate-300 flex items-center justify-center gap-2 transition-all hover:border-slate-700"
                     >
                       <Crosshair size={14} className="text-blue-500" />
                       <span>Position Watermark on Screen</span>
@@ -1268,18 +1258,23 @@ export default function ProgrammaticVideoGuide() {
                 </div>
 
                 {/* Transitions Toggle panel */}
-                <div className="space-y-3 bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Sparkles size={16} className="text-amber-400" />
-                      <label className="text-xs font-bold text-slate-200">Cinematic Swap</label>
+                <div className="apple-control-group apple-setting-card apple-swap-card bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
+                  <div className="apple-setting-header">
+                    <div className="apple-setting-title-row">
+                      <span className="apple-setting-icon">
+                        <Sparkles size={16} />
+                      </span>
+                      <div>
+                        <span className="apple-setting-eyebrow">Scene Transition</span>
+                        <h5 className="apple-setting-title">Cinematic Swap</h5>
+                      </div>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
+                    <label className="apple-switch-control relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" checked={enableSpecialAnimation} onChange={(e) => setEnableSpecialAnimation(e.target.checked)} className="sr-only peer" />
-                      <div className="w-8 h-4 bg-slate-850 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-800 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-amber-500"></div>
+                      <span className="apple-switch"></span>
                     </label>
                   </div>
-                  <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
+                  <p className="apple-setting-description">
                     When active, the 3D phone mockup dynamically spins and swaps sides during scene transitions.
                   </p>
                 </div>
@@ -1292,7 +1287,7 @@ export default function ProgrammaticVideoGuide() {
               <div className="space-y-5 animate-in fade-in duration-150">
 
                 {/* Exporter actions card */}
-                <div className="space-y-3.5 bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
+                <div className="apple-control-group space-y-3.5 bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
                   <h5 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                     <Film size={14} className="text-emerald-400 animate-pulse" />
                     <span>Render & Export</span>
@@ -1303,7 +1298,7 @@ export default function ProgrammaticVideoGuide() {
                   <button
                     onClick={handleStartExport}
                     disabled={isExporting}
-                    className="w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 disabled:from-slate-850 disabled:to-slate-850 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-emerald-950/40 relative overflow-hidden group hover:scale-[1.01] active:scale-[0.99]"
+                    className="apple-render-button w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 disabled:from-slate-850 disabled:to-slate-850 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-emerald-950/40 relative overflow-hidden group hover:scale-[1.01] active:scale-[0.99]"
                   >
                     {isExporting ? (
                       <Loader2 className="animate-spin text-emerald-200" size={16} />
@@ -1315,7 +1310,7 @@ export default function ProgrammaticVideoGuide() {
                 </div>
 
                 {/* Import / Export local project state backup utilities */}
-                <div className="space-y-4 bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
+                <div className="apple-control-group space-y-4 bg-slate-950/30 p-4 rounded-xl border border-slate-800/60">
                   <h5 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                     <LayoutGrid size={14} className="text-blue-400" />
                     <span>Project File Utilities</span>
@@ -1532,7 +1527,7 @@ export default function ProgrammaticVideoGuide() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-        .phone-wrapper { --phone-scale: 1.25; }
+        .phone-wrapper { --phone-scale: 0.9; }
 
       `}} />
     </div>
