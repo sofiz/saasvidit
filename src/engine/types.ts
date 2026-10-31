@@ -90,6 +90,8 @@ export interface Project {
   audio: {
     sfx: boolean;
     sfxVolume: number;
+    /** 'none', 'upload' (the uploaded file below) or the id of a built-in library track. */
+    track: string;
     music: string | null;
     musicName: string;
     musicVolume: number;

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Maximize2, Minimize2, MousePointerClick, Pause, Play, Repeat, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { loadFonts, onAssetsChanged } from '../engine/assets';
-import { AudioPreview } from '../engine/audio';
+import { AudioPreview, resolveMusic } from '../engine/audio';
 import { Compositor } from '../engine/compositor';
 import { newGesture } from '../engine/defaults';
 import { STAGES } from '../engine/layout';
@@ -77,6 +77,15 @@ export function Preview() {
     clock.setLoop(loop);
   }, [loop, clock]);
 
+  // Compose the music bed ahead of time so playback starts instantly.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const plan = compRef.current?.plan;
+      if (plan) resolveMusic(project, plan).catch(() => undefined);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [project]);
+
   // Fit the canvas into the available space and match its backing store to the screen.
   useEffect(() => {
     const host = hostRef.current!;
@@ -113,9 +122,9 @@ export function Preview() {
       const comp = compRef.current;
       if (!comp) return;
       if (clock.playing) {
-        if (seeks !== clock.seeks && comp.plan) audioRef.current?.start(projectRef.current, comp.plan, clock.time);
+        if (seeks !== clock.seeks && comp.plan) audioRef.current?.start(projectRef.current, comp.plan, clock.getTime);
         const { wrapped, ended } = clock.advance(dt);
-        if (wrapped && comp.plan) audioRef.current?.start(projectRef.current, comp.plan, clock.time);
+        if (wrapped && comp.plan) audioRef.current?.start(projectRef.current, comp.plan, clock.getTime);
         if (ended) audioRef.current?.stop();
         dirty.current = true;
       }
@@ -140,7 +149,7 @@ export function Preview() {
     const comp = compRef.current;
     if (!audio || !comp?.plan) return;
     audio.muted = muted;
-    if (playing && !muted) audio.start(projectRef.current, comp.plan, clock.time);
+    if (playing && !muted) audio.start(projectRef.current, comp.plan, clock.getTime);
     else audio.stop();
   }, [playing, muted, clock]);
 

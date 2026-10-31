@@ -33,6 +33,7 @@ import { createDemoProject } from '../engine/demo';
 import { clamp } from '../engine/math';
 import type { Aspect, BackgroundKind, CameraMove, GestureKind, LayoutMode, LogoPosition, Project, Scene, ScreenFit, TextAnim, TextStyle, Transition } from '../engine/types';
 import { useClockTime } from './clock';
+import { MusicPicker } from './MusicPicker';
 import { patchGesture, patchScene, sceneStart, useEditor, type InspectorTab } from './state';
 import { Chips, ColorInput, Field, Section, Segmented, Select, Slider, Switch } from './ui';
 
@@ -540,7 +541,6 @@ function ProjectPanel() {
   const { project } = editor;
   const set = (recipe: (p: Project) => Project, key?: string) => editor.update(recipe, key);
   const logoInput = useRef<HTMLInputElement>(null);
-  const musicInput = useRef<HTMLInputElement>(null);
   const openInput = useRef<HTMLInputElement>(null);
 
   const saveZip = async () => {
@@ -662,42 +662,15 @@ function ProjectPanel() {
         <Switch checked={project.showProgress} onChange={(showProgress) => set((p) => ({ ...p, showProgress }))} label="Story-style progress bar" />
       </Section>
 
-      <Section title="Sound" icon={<Volume2 size={14} />}>
-        <Switch checked={project.audio.sfx} onChange={(sfx) => set((p) => ({ ...p, audio: { ...p.audio, sfx } }))} label="Sound design (taps, whooshes, chimes)" />
+      <Section title="Music" icon={<Music size={14} />}>
+        <MusicPicker />
+      </Section>
+
+      <Section title="Sound effects" icon={<Volume2 size={14} />}>
+        <Switch checked={project.audio.sfx} onChange={(sfx) => set((p) => ({ ...p, audio: { ...p.audio, sfx } }))} label="Taps, whooshes and chimes" />
         {project.audio.sfx && (
           <Field label="Effects volume" value={`${project.audio.sfxVolume}%`}>
             <Slider value={project.audio.sfxVolume} min={0} max={100} onChange={(sfxVolume) => set((p) => ({ ...p, audio: { ...p.audio, sfxVolume } }), 'sfx-vol')} label="Effects volume" />
-          </Field>
-        )}
-        <div className="music-row">
-          <Music size={16} />
-          <span className="music-name">{project.audio.music ? project.audio.musicName || 'Music track' : 'No music'}</span>
-          <button type="button" className="btn btn-sm" onClick={() => musicInput.current?.click()}>
-            <Upload size={13} /> {project.audio.music ? 'Replace' : 'Add music'}
-          </button>
-          {project.audio.music && (
-            <button type="button" className="icon-btn icon-btn-xs is-danger" title="Remove music" onClick={() => set((p) => ({ ...p, audio: { ...p.audio, music: null, musicName: '' } }))}>
-              <Trash2 size={13} />
-            </button>
-          )}
-          <input
-            ref={musicInput}
-            type="file"
-            accept="audio/*"
-            hidden
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                const music = await readFileAsDataURL(file);
-                set((p) => ({ ...p, audio: { ...p.audio, music, musicName: file.name } }));
-              }
-              e.target.value = '';
-            }}
-          />
-        </div>
-        {project.audio.music && (
-          <Field label="Music volume" value={`${project.audio.musicVolume}%`}>
-            <Slider value={project.audio.musicVolume} min={0} max={100} onChange={(musicVolume) => set((p) => ({ ...p, audio: { ...p.audio, musicVolume } }), 'music-vol')} label="Music volume" />
           </Field>
         )}
       </Section>
