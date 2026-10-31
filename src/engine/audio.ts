@@ -1,4 +1,5 @@
 import { hash } from './math';
+import { isLibraryTrack, renderTrack, timelineFromPlan } from './music';
 import type { Plan, SfxKind } from './plan';
 import type { Project } from './types';
 
@@ -150,17 +151,28 @@ export function decodeMusic(src: string): Promise<AudioBuffer | null> {
   return req;
 }
 
+/** The music bed for the project: a library track arranged to this edit, or the uploaded file. */
+export function resolveMusic(project: Project, plan: Plan): Promise<AudioBuffer | null> {
+  const { track, music } = project.audio;
+  if (track === 'upload') return music ? decodeMusic(music) : Promise.resolve(null);
+  if (isLibraryTrack(track)) return renderTrack(track, timelineFromPlan(plan));
+  return Promise.resolve(null);
+}
+
 function scheduleMusic(ctx: BaseAudioContext, buffer: AudioBuffer, project: Project, duration: number, startAt: number, offset: number) {
+  // Library tracks are composed to the exact length; uploads loop and get faded in and out.
+  const fitted = project.audio.track !== 'upload';
   const source = ctx.createBufferSource();
   source.buffer = buffer;
-  source.loop = true;
+  source.loop = !fitted;
   const gain = ctx.createGain();
-  const vol = (project.audio.musicVolume / 100) * 0.9;
+  const vol = (project.audio.musicVolume / 100) * (fitted ? 1.15 : 0.9);
   const remaining = duration - offset;
   const g = gain.gain;
-  g.setValueAtTime(offset < 0.8 ? vol * (offset / 0.8) : vol, startAt);
-  if (offset < 0.8) g.linearRampToValueAtTime(vol, startAt + (0.8 - offset));
-  const fadeStart = Math.max(0, remaining - 1.8);
+  const fadeIn = fitted ? 0.02 : 0.8;
+  g.setValueAtTime(offset < fadeIn ? vol * (offset / fadeIn) : vol, startAt);
+  if (offset < fadeIn) g.linearRampToValueAtTime(vol, startAt + (fadeIn - offset));
+  const fadeStart = Math.max(0, remaining - (fitted ? 0.4 : 1.8));
   g.setValueAtTime(vol, startAt + fadeStart);
   g.linearRampToValueAtTime(0, startAt + remaining);
   source.connect(gain).connect(ctx.destination);
@@ -194,7 +206,7 @@ function scheduleSfx(ctx: BaseAudioContext, plan: Plan, project: Project, cache:
 
 /** Renders music and sound effects for the whole timeline. */
 export async function renderSoundtrack(project: Project, plan: Plan, sampleRate = 48000): Promise<AudioBuffer | null> {
-  const music = project.audio.music ? await decodeMusic(project.audio.music) : null;
+  const music = await resolveMusic(project, plan);
   if (!project.audio.sfx && !music) return null;
   const ctx = new OfflineAudioContext(2, Math.ceil(plan.duration * sampleRate), sampleRate);
   if (music) scheduleMusic(ctx, music, project, plan.duration, 0, 0);
@@ -210,15 +222,17 @@ export class AudioPreview {
   private token = 0;
   muted = false;
 
-  async start(project: Project, plan: Plan, from: number) {
+  /** Starts playback at the playhead; `now` is read again once the music is ready so sound lines up with the picture. */
+  async start(project: Project, plan: Plan, now: () => number) {
     this.stop();
     if (this.muted) return;
     const token = ++this.token;
     this.ctx ??= new AudioContext({ latencyHint: 'interactive' });
     const ctx = this.ctx;
     if (ctx.state === 'suspended') await ctx.resume().catch(() => undefined);
-    const music = project.audio.music ? await decodeMusic(project.audio.music) : null;
+    const music = await resolveMusic(project, plan);
     if (token !== this.token) return;
+    const from = now();
     const startAt = ctx.currentTime + 0.02;
     if (music && from < plan.duration) this.nodes.push(scheduleMusic(ctx, music, project, plan.duration, startAt, from));
     if (project.audio.sfx) this.nodes.push(...scheduleSfx(ctx, plan, project, this.sfxCache, from, startAt));

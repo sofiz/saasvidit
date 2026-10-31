@@ -157,7 +157,7 @@ export function blankProject(): Project {
     intro: { enabled: true, title: 'Your App', subtitle: 'The tagline people remember.', duration: 2.6 },
     outro: { enabled: true, title: 'Get it today', subtitle: 'Available on iOS and Android', cta: 'Download now', duration: 3.4 },
     showProgress: false,
-    audio: { sfx: true, sfxVolume: 70, music: null, musicName: '', musicVolume: 60 },
+    audio: { sfx: true, sfxVolume: 70, track: 'pulse', music: null, musicName: '', musicVolume: 75 },
     scenes: [newScene({ title: 'Show off your *app*', subtitle: 'Drop a screenshot, add a tap, and watch the camera follow.', eyebrow: 'Getting started' })],
   };
 }
@@ -223,7 +223,7 @@ export function migrateProject(data: unknown): Project {
       logo: { ...base.logo, ...raw.logo },
       intro: { ...base.intro, ...raw.intro },
       outro: { ...base.outro, ...raw.outro },
-      audio: { ...base.audio, ...raw.audio },
+      audio: { ...base.audio, ...raw.audio, track: raw.audio?.track ?? (raw.audio?.music ? 'upload' : base.audio.track) },
       scenes: raw.scenes.map((s: Scene) => ({ ...newScene(), ...s, gestures: (s.gestures ?? []).map((g) => newGesture(g)) })),
     } as Project;
   }
